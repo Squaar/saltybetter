@@ -1,7 +1,7 @@
 import requests
 import logging
 import json
-from xml.etree import ElementTree
+from bs4 import BeautifulSoup
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,10 +28,10 @@ class SaltyClient():
     def get_wallet_balance(self):
         ajax_response = self.session.get('http://saltybet.com/ajax_tournament_end.php')
         page_response = self.session.get('http://saltybet.com')
+        clean_html = page_response.text.strip().strip('<!DOCTYPE html">')
 
-        #import pdb; pdb.set_trace()
-        root = ElementTree.fromstring(page_response.text.strip().strip('<!DOCTYPE html">'))
-        page_balance = root.findall(".//[@id='b']").attrib['value']
+        soup = BeautifulSoup(clean_html, 'html.parser')
+        page_balance = soup.find_all(id='b')[0]['value']
 
         return {'ajax': response.text, 'page': page_balance}
 
