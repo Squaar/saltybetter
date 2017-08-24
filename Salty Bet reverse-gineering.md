@@ -9,6 +9,7 @@ Important javascript: http://www.saltybet.com/j/www-cdn-jtvnw-x.js
 - login url: http://saltybet.com/authenticate?signin=1
 - python: https://github.com/nawns/python-saltybet
 	- use http://docs.python-requests.org/en/latest/
+    - socketIO-client 0.7.2
 	> def login(self):
 	        payload = {}
 	        payload['email'] = self.email
