@@ -7,11 +7,13 @@ import time
 logging.basicConfig(filename='salty.log', format='%(asctime)s-%(name)s-%(levelname)s-%(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
+_REFRESH_INTERVAL = 5 # seconds
+
 class SaltyController():
 
     def __init__(self):
         self.client = saltyclient.SaltyClient()
-        self.db = saltydb.saltyDB('salt.db')
+        self.db = saltydb.SaltyDB('salt.db')
         self.state = None
         self.balance = None
         self.tournament_balance = None
@@ -22,15 +24,15 @@ class SaltyController():
         while True:
             new_state = self.client.get_state()
             if new_state != self.state:
-                if new_state['status'] != 'open' and new_state['status'] != 'closed':
-                    self.db.add_fight(new_state)
                 self.state = new_state
+                if new_state['status'] != 'open' and new_state['status'] != 'closed':
+                    self.db.add_fight(self.state)
                 self.balance = self.client.get_wallet_balance()
                 self.tournament_balance = self.client.get_tournament_balance()
-                log.info('State: ' + str(self.state))
-                log.info('Wallet Balance: ' + str(self.balance))
-                log.info('Tournament Balance: ' + self.tournament_balance)
-            time.sleep(10)
+                log.debug('State: ' + str(self.state))
+                log.debug('Wallet Balance: ' + str(self.balance))
+                log.debug('Tournament Balance: ' + self.tournament_balance)
+            time.sleep(_REFRESH_INTERVAL)
 
 
 if __name__ == '__main__':
