@@ -4,7 +4,8 @@ import saltydb
 import logging
 import time
 
-logging.basicConfig(filename='salty.log', format='%(asctime)s-%(name)s-%(levelname)s-%(message)s', level=logging.INFO)
+# logging.basicConfig(filename='salty.log', format='%(asctime)s-%(name)s-%(levelname)s: %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s-%(name)s-%(levelname)s: %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
 _REFRESH_INTERVAL = 5 # seconds
@@ -25,7 +26,8 @@ class SaltyController():
             new_state = self.client.get_state()
             if new_state != self.state:
                 self.state = new_state
-                if new_state['status'] != 'open' and new_state['status'] != 'closed':
+                log.info(self.state)
+                if self.state['status'] in ['1', '2']: # fight over, have winner
                     self.db.add_fight(self.state)
                 self.balance = self.client.get_wallet_balance()
                 self.tournament_balance = self.client.get_tournament_balance()
