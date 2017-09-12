@@ -32,6 +32,12 @@ class SaltyDB():
         self.conn.commit()
     
     def add_fight(self, state):
+        if not state.get('p1name') or not state.get('p2name'):
+            raise RuntimeError('Could not determine fighter names (%s, %s)' % (state.get('p1name'), state.get('p2name')))
+        if state['p1name'] == state['p2name']:
+            log.warning('Self fight detected. Ignoring. %s' % state['p1name'])
+            return
+        
         p1 = self.conn.execute('SELECT * FROM fighters WHERE name=?', (state['p1name'],)).fetchone()
         p2 = self.conn.execute('SELECT * FROM fighters WHERE name=?', (state['p2name'],)).fetchone()
 
