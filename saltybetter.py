@@ -2,13 +2,17 @@
 import saltyclient
 import saltydb
 import logging
+import smtplib
 import time
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
-# logging.basicConfig(filename='salty.log', format='%(asctime)s-%(name)s-%(levelname)s: %(message)s', level=logging.INFO)
 logging.basicConfig(format='%(asctime)s-%(name)s-%(levelname)s: %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
 _REFRESH_INTERVAL = 5 # seconds
+_USER = 'saltyface@gmail.com'
+_PASSWORD = 'saltyface'
 
 class SaltyController():
 
@@ -20,22 +24,46 @@ class SaltyController():
         self.tournament_balance = None
 
     def main(self):
-        # self.client.login('saltyface@gmail.com', 'saltyface')
+        # self.client.login(_USER, _PASSWORD)
         self.client.spoof_login('__cfduid=d4ad05a1bdff57927e01f223ce5d3cc771503283048; PHPSESSID=uj61t6n9aokf6cdb8qd7a77963')
         while True:
-            new_state = self.client.get_state()
-            if new_state != self.state:
-                self.state = new_state
-                log.info(self.state)
-                if self.state['status'] in ['1', '2']: # fight over, have winner
-                    self.db.add_fight(self.state)
-                self.balance = self.client.get_wallet_balance()
-                self.tournament_balance = self.client.get_tournament_balance()
-                log.debug('State: ' + str(self.state))
-                log.debug('Wallet Balance: ' + str(self.balance))
-                log.debug('Tournament Balance: ' + self.tournament_balance)
+            try:
+                1/0
+                new_state = self.client.get_state()
+                if new_state != self.state:
+                    self.state = new_state
+                    log.info(self.state)
+                    if self.state['status'] in ['1', '2']: # fight over, have winner
+                        self.db.add_fight(self.state)
+                    self.balance = self.client.get_wallet_balance()
+                    self.tournament_balance = self.client.get_tournament_balance()
+                    log.debug('State: ' + str(self.state))
+                    log.debug('Wallet Balance: ' + str(self.balance))
+                    log.debug('Tournament Balance: ' + self.tournament_balance)
+            except Exception as e:
+                log.exception('UH OH! %s' % e)
+                from io import StringIO
+                log_stream = StringIO()
+                logging.basicConfig(stream=log_stream)
+                logging.exception('Saltybetter has encountered an error! %s' % e)
+                sendmail(_USER, 'mdumford99@gmail.com', 'SALTY ERROR!', log_stream.getvalue())
             time.sleep(_REFRESH_INTERVAL)
 
+def sendmail(from_addr, to, subject, body, cc=None):
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(_USER, _PASSWORD)
+
+    msg = MIMEMultipart()
+    msg['From'] = from_addr
+    msg['To'] = to
+    msg['Subject'] = subject
+    if cc:
+        msg['Cc'] = cc
+    msg.attach(MIMEText(body, 'plain'))
+
+    server.sendmail(from_addr, to, msg.as_string())
+    server.quit()
 
 if __name__ == '__main__':
     SaltyController().main()
