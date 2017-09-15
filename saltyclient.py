@@ -26,11 +26,8 @@ class SaltyClient():
             for cookie in cookies:
                 cookie = cookie.split('=')
                 self.session.cookies.update({cookie[0]: cookie[1]})
-            # map(self._HEADERS['Cookie'].split('; '), lambda x: self.session.cookies.update({x.split('=')[0]: x.split('=')[1]}))
             self.spoof_enabled = True
             log.info("Spoof'd cookie '%s'" % spoof_cookie)
-            # log.debug('headers: %s' % self.session.headers)
-            # log.debug('cookies: %s' % self.session.cookies)
         except IndexError as e:
             log.error('Invalid cookie format. Please use format "id0=foo; id1=bar"')
     
@@ -43,9 +40,6 @@ class SaltyClient():
         self._clean_session()
         response = self.session.post(self._LOGIN_URL, data=payload)
         self.spoof_enabled = False
-        # log.debug('response: %s' % response.text.strip()[:20], response.headers)
-        # log.debug('headers: %s' % self.session.headers)
-        # log.debug('cookies: %s' % self.session.cookies)
         log.info('Logged in as %s' % format(email))
 
     def _clean_session(self):
@@ -57,8 +51,6 @@ class SaltyClient():
     def get_wallet_balance(self):
         ajax_response = self.session.get('http://saltybet.com/ajax_tournament_end.php')
         page_response = self.session.get('http://saltybet.com')
-        # log.debug('headers' + str(self.session.headers))
-        # log.debug('resp headers' + str(page_response.headers))
         clean_html = page_response.text.strip().strip('<!DOCTYPE html">')
 
         soup = BeautifulSoup(clean_html, 'html.parser')
