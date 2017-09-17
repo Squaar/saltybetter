@@ -36,22 +36,14 @@ class SaltyDB():
             log.warning('Self fight detected. Ignoring. %s' % state['p1name'])
             return
         
-        p1 = self.get_fighter(p1name)
-        p2 = self.get_fighter(p2name)
+        p1 = self.get_or_add_fighter(p1name)
+        p2 = self.get_or_add_fighter(p2name)
 
         if winner == '1':
-            if not p1:
-                p1 = self.add_fighter(p1name)
             self.increment_wins(p1['guid'], p2['elo'] if p2 else 0)
-            if not p2:
-                p2 = self.add_fighter(p2name)
             self.increment_losses(p2['guid'], p1['elo'] if p1 else 0)
         elif winner == '2':
-            if not p1:
-                p1 = self.add_fighter(p1name)
             self.increment_losses(p1['guid'], p2['elo'] if p2 else 0)
-            if not p2:
-                p2 = self.add_fighter(p2name)
             self.increment_wins(p2['guid'], p1['elo'] if p1 else 0)
         else:
             raise RuntimeError('Could not determine a winner: %s' % state['status'])
@@ -63,6 +55,7 @@ class SaltyDB():
         log.info('Fight recorded %s' % list(new_fight))
         return new_fight
 
+    # returns newly created fighter
     def add_fighter(self, name):
         result = self.conn.execute('INSERT INTO fighters (name) VALUES (?)', (name,))
         self.conn.commit()
@@ -70,6 +63,13 @@ class SaltyDB():
         log.info('Fighter added %s' % list(new_fighter))
         return new_fighter 
 
+    def get_or_add_fighter(self, name):
+        fighter = self.get_fighter(name)
+        if not fighter:
+            fighter = self.add_fighter(name)
+        return fighter
+
+    # fighter can be name or guid
     def get_fighter(self, fighter):
         result = self.conn.execute('SELECT * FROM fighters WHERE guid =? or name =?', (fighter, fighter))
         return result.fetchone()
