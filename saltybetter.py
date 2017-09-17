@@ -32,11 +32,12 @@ class SaltyController():
                     log.info(self.state)
                     if self.state['status'] in ['1', '2']: # fight over, have winner
                         self.db.add_fight(self.state)
-                    self.balance = self.client.get_wallet_balance()
-                    self.tournament_balance = self.client.get_tournament_balance()
-                    log.debug('State: ' + str(self.state))
-                    log.debug('Wallet Balance: ' + str(self.balance))
-                    log.debug('Tournament Balance: ' + self.tournament_balance)
+                    elif self.state['status'] == 'open':
+                        # Decide who to bet on
+                        self.balance = self.client.get_wallet_balance()
+                        self.tournament_balance = self.client.get_tournament_balance()
+                        log.info('Wallet: %s, Tournament Balance: %s' % (self.balance, self.tournament_balance))
+                        self.client.place_bet(1, 10)
             except Exception as e:
                 log.exception('UH OH! %s' % e)
             time.sleep(_REFRESH_INTERVAL)

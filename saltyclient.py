@@ -8,6 +8,7 @@ log = logging.getLogger(__name__)
 class SaltyClient():
 
     _LOGIN_URL = 'http://saltybet.com/authenticate?signin=1'
+    _BET_URL = 'http://saltybet.com/ajax_place_bet.php'
     _HEADERS = {
             'Connection': 'keep-alive',
             'Host': 'www.saltybet.com',
@@ -57,6 +58,18 @@ class SaltyClient():
         page_balance = soup.find_all(id='b')[0]['value']
 
         return {'ajax': ajax_response.text, 'page': page_balance}
+
+    def place_bet(self, player, amount):
+        if player not in [1,2]:
+            raise RuntimeError('Player to bet on must be in [1,2]')
+        payload = {
+            'selectedplayer': 'player%s' % player,
+            'wager': amount
+        }
+        response = self.session.post(self._BET_URL, data=payload)
+        log.debug('Bet response: %s' % response)
+        log.info('Bet %s on player %s' % (amount, player))
+        import pdb;pdb.set_trace()
 
     def get_tournament_balance(self):
         response = self.session.get('http://saltybet.com/ajax_tournament_start.php')
