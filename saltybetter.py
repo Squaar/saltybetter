@@ -31,9 +31,11 @@ class SaltyController():
                     self.state = new_state
                     log.info(self.state)
                     if self.state['status'] in ['1', '2']: # fight over, have winner
-                        self.db.add_fight(self.state)
+                        self.db.add_fight(self.state['p1name'], self.state['p2name'], self.state['status'])
                     elif self.state['status'] == 'open':
                         # Decide who to bet on
+                        p1 = self.db.get_fighter(self.state['p1name'])
+                        p2 = self.db.get_fighter(self.state['p2name'])
                         self.balance = self.client.get_wallet_balance()
                         self.tournament_balance = self.client.get_tournament_balance()
                         log.info('Wallet: %s, Tournament Balance: %s' % (self.balance, self.tournament_balance))

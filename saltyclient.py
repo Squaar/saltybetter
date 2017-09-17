@@ -67,9 +67,7 @@ class SaltyClient():
             'wager': amount
         }
         response = self.session.post(self._BET_URL, data=payload)
-        log.debug('Bet response: %s' % response)
         log.info('Bet %s on player %s' % (amount, player))
-        import pdb;pdb.set_trace()
 
     def get_tournament_balance(self):
         response = self.session.get('http://saltybet.com/ajax_tournament_start.php')

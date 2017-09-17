@@ -31,34 +31,32 @@ class SaltyDB():
         ''')
         self.conn.commit()
     
-    def add_fight(self, state):
-        if not state.get('p1name') or not state.get('p2name'):
-            raise RuntimeError('Could not determine fighter names (%s, %s)' % (state.get('p1name'), state.get('p2name')))
-        if state['p1name'] == state['p2name']:
+    def add_fight(self, p1name, p2name, winner):
+        if p1name == p2name:
             log.warning('Self fight detected. Ignoring. %s' % state['p1name'])
             return
         
-        p1 = self.conn.execute('SELECT * FROM fighters WHERE name=?', (state['p1name'],)).fetchone()
-        p2 = self.conn.execute('SELECT * FROM fighters WHERE name=?', (state['p2name'],)).fetchone()
+        p1 = self.get_fighter(p1name)
+        p2 = self.get_fighter(p2name)
 
-        if state['status'] == '1':
+        if winner == '1':
             if not p1:
-                p1 = self.add_fighter(state['p1name'])
+                p1 = self.add_fighter(p1name)
             self.increment_wins(p1['guid'], p2['elo'] if p2 else 0)
             if not p2:
-                p2 = self.add_fighter(state['p2name'])
+                p2 = self.add_fighter(p2name)
             self.increment_losses(p2['guid'], p1['elo'] if p1 else 0)
-        elif state['status'] == '2':
+        elif winner == '2':
             if not p1:
-                p1 = self.add_fighter(state['p1name'])
+                p1 = self.add_fighter(p1name)
             self.increment_losses(p1['guid'], p2['elo'] if p2 else 0)
             if not p2:
-                p2 = self.add_fighter(state['p2name'])
+                p2 = self.add_fighter(p2name)
             self.increment_wins(p2['guid'], p1['elo'] if p1 else 0)
         else:
             raise RuntimeError('Could not determine a winner: %s' % state['status'])
 
-        result = self.conn.execute('INSERT INTO fights (p1, p2, winner) VALUES (?, ?, ?)', (p1['guid'], p2['guid'], state['status']))
+        result = self.conn.execute('INSERT INTO fights (p1, p2, winner) VALUES (?, ?, ?)', (p1['guid'], p2['guid'], winner))
         self.conn.commit()
         result = self.conn.execute('SELECT * FROM fights WHERE ROWID=?', (result.lastrowid,))
         new_fight = result.fetchone()
@@ -72,8 +70,8 @@ class SaltyDB():
         log.info('Fighter added %s' % list(new_fighter))
         return new_fighter 
 
-    def get_fighter(self, fighter_guid):
-        result = self.conn.execute('SELECT * FROM fighters WHERE guid =?', (fighter_guid,))
+    def get_fighter(self, fighter):
+        result = self.conn.execute('SELECT * FROM fighters WHERE guid =? or name =?', (fighter, fighter))
         return result.fetchone()
 
     def increment_wins(self, fighter_guid, enemy_elo):
