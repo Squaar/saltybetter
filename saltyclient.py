@@ -61,7 +61,7 @@ class SaltyClient():
 
     def place_bet(self, player, amount):
         if player not in [1,2]:
-            raise RuntimeError('Player to bet on must be in [1,2]')
+            raise RuntimeError('Player to bet on must be in [1, 2]: %s' % player)
         payload = {
             'selectedplayer': 'player%s' % player,
             'wager': amount

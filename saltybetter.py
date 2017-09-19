@@ -33,7 +33,7 @@ class SaltyController():
                     log.info(self.state)
 
                     if self.state['status'] in ['1', '2']: # fight over, have winner
-                        self.db.add_fight(self.state['p1name'], self.state['p2name'], self.state['status'])
+                        self.db.add_fight(self.state['p1name'], self.state['p2name'], int(self.state['status']))
                     elif self.state['status'] == 'open':
                         p1 = self.db.get_or_add_fighter(self.state['p1name'])
                         p2 = self.db.get_or_add_fighter(self.state['p2name'])
@@ -47,10 +47,14 @@ class SaltyController():
                             bet_on = 2
                             amount = p1['elo'] / (p1['elo'] + p2['elo']) * _MAX_BET
                         else:
-                            ##TODO: Decide what to do here
                             bet_on = 1
-                            amount = 10
+                            amount = _MAX_BET / 10
                             log.warning('P1 and P2 have the same elo, betting 10 on p1 by default.')
+
+                        if amount < 0:
+                            amount = 0
+                        if amount > _MAX_BET:
+                            amount = _MAX_BET
                         
                         log.info('Wallet: %s, Tournament Balance: %s' % (self.balance, self.tournament_balance))
                         self.client.place_bet(bet_on, amount)

@@ -7,14 +7,15 @@ MEMORY = ':memory:'
 
 class SaltyDB():
 
-    def __init__(self, db=MEMORY):
+    def __init__(self, db=MEMORY, elo_stake=.05):
+        self.elo_stake = elo_stake
         self.conn = sqlite3.connect(db)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript('''
             CREATE TABLE IF NOT EXISTS fighters(
                 guid INTEGER PRIMARY KEY,
                 name TEXT UNIQUE NOT NULL,
-                elo INT NOT NULL DEFAULT 0,
+                elo REAL NOT NULL DEFAULT 100,
                 wins INT NOT NULL DEFAULT 0,
                 losses INT NOT NULL DEFAULT 0
             );
@@ -39,14 +40,14 @@ class SaltyDB():
         p1 = self.get_or_add_fighter(p1name)
         p2 = self.get_or_add_fighter(p2name)
 
-        if winner == '1':
+        if winner == 1:
             self.increment_wins(p1['guid'], p2['elo'] if p2 else 0)
-            self.increment_losses(p2['guid'], p1['elo'] if p1 else 0)
-        elif winner == '2':
-            self.increment_losses(p1['guid'], p2['elo'] if p2 else 0)
+            self.increment_losses(p2['guid'])
+        elif winner == 2:
+            self.increment_losses(p1['guid'])
             self.increment_wins(p2['guid'], p1['elo'] if p1 else 0)
         else:
-            raise RuntimeError('Could not determine a winner: %s' % state['status'])
+            raise RuntimeError("Winner must be in [1, 2]: %s" % winner)
 
         result = self.conn.execute('INSERT INTO fights (p1, p2, winner) VALUES (?, ?, ?)', (p1['guid'], p2['guid'], winner))
         self.conn.commit()
@@ -76,17 +77,21 @@ class SaltyDB():
 
     def increment_wins(self, fighter_guid, enemy_elo):
         result = self.conn.execute(
-            'UPDATE fighters SET elo=(elo*(wins+losses)+?+100)/(wins+losses+1), wins=wins+1 WHERE guid=?',
-            (enemy_elo, fighter_guid)
+            # 'UPDATE fighters SET elo=(elo*(wins+losses)+?+100)/(wins+losses+1), wins=wins+1 WHERE guid=?',
+            # (enemy_elo, fighter_guid)
+            'UPDATE fighters SET elo=elo+(?*?), wins=wins+1 WHERE guid=?',
+            (self.elo_stake, enemy_elo, fighter_guid)
         )
         self.conn.commit()
         updated = self.get_fighter(fighter_guid)
         log.info('Incremented wins: %s' % list(updated))
 
-    def increment_losses(self, fighter_guid, enemy_elo):
+    def increment_losses(self, fighter_guid):
         result = self.conn.execute(
-            'UPDATE fighters SET elo=(elo*(wins+losses)+?-100)/(wins+losses+1), losses=losses+1 WHERE guid=?',
-            (enemy_elo, fighter_guid)
+            # 'UPDATE fighters SET elo=(elo*(wins+losses)+?-100)/(wins+losses+1), losses=losses+1 WHERE guid=?',
+            # (enemy_elo, fighter_guid)
+            'UPDATE fighters SET elo=elo-(?*elo), losses=losses+1 WHERE guid=?',
+            (self.elo_stake, fighter_guid)
         )
         self.conn.commit()
         updated = self.get_fighter(fighter_guid)
