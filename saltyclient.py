@@ -12,16 +12,20 @@ class SaltyClient():
     _HEADERS = {
             'Connection': 'keep-alive',
             'Host': 'www.saltybet.com',
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.91 Safari/537.36',
+            # 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.36',
             # 'Cookie': '__cfduid=d4ad05a1bdff57927e01f223ce5d3cc771503283048; PHPSESSID=uj61t6n9aokf6cdb8qd7a77963'
     }
 
     def __init__(self):
         self.spoof_enabled = False
 
-    def spoof_login(self, spoof_cookie):
+    def spoof_login(self, spoof_cookie, user_agent=None):
         self._clean_session()
         self._HEADERS['Cookie'] = spoof_cookie
+        if user_agent:
+            self._HEADERS['User-Agent'] = user_agent
+        log.info('User Agent: %s' % user_agent)
         try:
             cookies = spoof_cookie.split('; ')
             for cookie in cookies:
@@ -60,6 +64,7 @@ class SaltyClient():
         return {'ajax': ajax_response.text, 'page': page_balance}
 
     def place_bet(self, player, amount):
+        amount = int(amount)
         if player not in [1,2]:
             raise RuntimeError('Player to bet on must be in [1, 2]: %s' % player)
         payload = {

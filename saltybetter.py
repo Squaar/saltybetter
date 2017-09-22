@@ -24,7 +24,10 @@ class SaltyController():
 
     def main(self):
         # self.client.login(_USER, _PASSWORD)
-        self.client.spoof_login('__cfduid=d4ad05a1bdff57927e01f223ce5d3cc771503283048; PHPSESSID=uj61t6n9aokf6cdb8qd7a77963')
+        self.client.spoof_login(
+                '__cfduid=d4ad05a1bdff57927e01f223ce5d3cc771503283048; PHPSESSID=kpplnfa9oks5b4ekodobqg66s2',
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.91 Safari/537.36'
+        )
         while True:
             try:
                 new_state = self.client.get_state()
@@ -49,7 +52,7 @@ class SaltyController():
                         else:
                             bet_on = 1
                             amount = _MAX_BET / 10
-                            log.warning('P1 and P2 have the same elo, betting 10 on p1 by default.')
+                            log.info('P1 and P2 have the same elo, betting 10% max on P1 by default.')
 
                         if amount < 0:
                             amount = 0
