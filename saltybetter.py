@@ -43,6 +43,10 @@ class SaltyController():
                         self.balance = self.client.get_wallet_balance()
                         self.tournament_balance = self.client.get_tournament_balance()
 
+                        log.info('P1 elo: %s' % p1['elo'])
+                        log.info('P2 elo: %s' % p2['elo'])
+                        
+
                         ##TODO: fix this. only betting 10 on 1 or ~47 on 2
                         if p1['elo'] > p2['elo']:
                             bet_on = 1
