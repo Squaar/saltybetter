@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup
 
 log = logging.getLogger(__name__)
 
+##TODO: make Fighter object
+
 class SaltyClient():
 
     _LOGIN_URL = 'http://saltybet.com/authenticate?signin=1'

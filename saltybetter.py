@@ -43,12 +43,13 @@ class SaltyController():
                         self.balance = self.client.get_wallet_balance()
                         self.tournament_balance = self.client.get_tournament_balance()
 
+                        ##TODO: fix this. only betting 10 on 1 or ~47 on 2
                         if p1['elo'] > p2['elo']:
                             bet_on = 1
                             amount = p1['elo'] / (p1['elo'] + p2['elo']) * _MAX_BET
                         if p2['elo'] > p1['elo']:
                             bet_on = 2
-                            amount = p1['elo'] / (p1['elo'] + p2['elo']) * _MAX_BET
+                            amount = p2['elo'] / (p1['elo'] + p2['elo']) * _MAX_BET
                         else:
                             bet_on = 1
                             amount = _MAX_BET / 10
