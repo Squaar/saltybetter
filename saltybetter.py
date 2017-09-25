@@ -42,16 +42,13 @@ class SaltyController():
                         p2 = self.db.get_or_add_fighter(self.state['p2name'])
                         self.balance = self.client.get_wallet_balance()
                         self.tournament_balance = self.client.get_tournament_balance()
-
-                        log.info('P1 elo: %s' % p1['elo'])
-                        log.info('P2 elo: %s' % p2['elo'])
-                        
+                        log.info('P1 elo: %s, P2 elo: %s' % (p1['elo'], p2['elo']))
 
                         ##TODO: fix this. only betting 10 on 1 or ~47 on 2
                         if p1['elo'] > p2['elo']:
                             bet_on = 1
                             amount = p1['elo'] / (p1['elo'] + p2['elo']) * _MAX_BET
-                        if p2['elo'] > p1['elo']:
+                        elif p2['elo'] > p1['elo']:
                             bet_on = 2
                             amount = p2['elo'] / (p1['elo'] + p2['elo']) * _MAX_BET
                         else:
