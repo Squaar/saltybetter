@@ -79,7 +79,7 @@ class SaltyController():
                         self.update_balances()
                         p1 = self.db.get_or_add_fighter(self.state['p1name'])
                         p2 = self.db.get_or_add_fighter(self.state['p2name'])
-                        log.info('P1 elo: %s, P2 elo: %s' % (p1['elo'], p2['elo']))
+                        log.info('P1(%s) elo: %s, P2(%s) elo: %s' % (p1['name'], p1['elo'], p2['name'], p2['elo']))
 
                         ##TODO: think of a better equation for amount
                         if p1['elo'] > p2['elo']:
