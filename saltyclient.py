@@ -63,7 +63,11 @@ class SaltyClient():
         soup = BeautifulSoup(clean_html, 'html.parser')
         page_balance = soup.find_all(id='b')[0]['value']
 
-        return {'ajax': ajax_response.text, 'page': page_balance}
+        # import pdb; pdb.set_trace()
+        return {
+            'ajax': None if not ajax_response.text else int(ajax_response.text),
+            'page': None if not page_balance else int(page_balance)
+        }
 
     def place_bet(self, player, amount):
         amount = int(amount)
