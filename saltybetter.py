@@ -46,7 +46,7 @@ class SaltyController():
                 old_balance, self.balance, self.balance - old_balance
             ))
         elif self.balance > old_balance:
-            log.info('Won bet! Old balance: %s, New balance: %s, Profit: %s' % (
+            log.info('Won bet!  Old balance: %s, New balance: %s, Profit: %s' % (
                 old_balance, self.balance, self.balance - old_balance
             ))
 
@@ -55,7 +55,7 @@ class SaltyController():
                 old_tournament_balance, self.tournament_balance, self.tournament_balance - old_tournament_balance
             ))
         elif self.tournament_balance > old_tournament_balance:
-            log.info('Won tournament bet! Old balance: %s, New balance: %s, Profit: %s' % (
+            log.info('Won tournament bet!  Old balance: %s, New balance: %s, Profit: %s' % (
                 old_tournament_balance, self.tournament_balance, self.tournament_balance - old_tournament_balance
             ))
 
