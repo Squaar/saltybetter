@@ -105,7 +105,5 @@ class SaltyController():
                 log.exception('UH OH! %s' % e)
             time.sleep(_REFRESH_INTERVAL)
 
-
-
 if __name__ == '__main__':
     SaltyController().main()

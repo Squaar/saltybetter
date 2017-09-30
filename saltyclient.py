@@ -82,7 +82,7 @@ class SaltyClient():
 
     def get_tournament_balance(self):
         response = self.session.get('http://saltybet.com/ajax_tournament_start.php')
-        return response.text
+        return int(response.text)
 
     def get_state(self):
         response = self.session.get('http://saltybet.com/state.json')
