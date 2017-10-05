@@ -1,4 +1,4 @@
-#!/home/squaar/brogramming/python/saltybetter-py/.env/bin/python3
+#!/home/squaar/brogramming/python/saltybetter/.env/bin/python3
 import saltyclient
 import saltydb
 import logging
@@ -12,6 +12,7 @@ _REFRESH_INTERVAL = 5 # seconds
 _USER = 'saltyface@gmail.com'
 _PASSWORD = 'saltyface'
 _MAX_BET = 100
+_WIN_MULTIPLIER = _MAX_BET * 0.1
 _BALANCE_SOURCE = 'page' # 'page' or 'ajax'
 
 class SaltyController():
@@ -59,6 +60,38 @@ class SaltyController():
                 old_tournament_balance, self.tournament_balance, self.tournament_balance - old_tournament_balance
             ))
 
+    def make_bet(self):
+        p1 = self.db.get_or_add_fighter(self.state['p1name'])
+        p2 = self.db.get_or_add_fighter(self.state['p2name'])
+        past_fights = self.db.get_fights(p1['guid'], p2['guid'])
+        p1_wins = [fight for fight in past_fights if fight['winner'] == p1['guid']]
+        p2_wins = [fight for fight in past_fights if fight['winner'] == p2['guid']]
+        log.info('P1(%s) elo: %s, wins: %s; P2(%s) elo: %s, wins: %s' % (p1['name'], p1['elo'], len(p1_wins), p2['name'], p2['elo'], len(p2_wins)))
+
+        win_bonus = abs(len(p1_wins) - len(p2_wins)) * _WIN_MULTIPLIER
+
+        ##TODO: think of a better equation for amount
+        if len(p1_wins) > len(p2_wins) or (len(p1_wins) == len(p2_wins) and p1['elo'] > p2['elo']):
+            bet_on = 1
+            amount = p1['elo'] / max(p1['elo'] + p2['elo'], 1) * _MAX_BET + win_bonus
+
+        elif len(p2_wins) > len(p1_wins) or (len(p2_wins) == len(p1_wins) and p2['elo'] > p1['elo']):
+            bet_on = 2
+            amount = p2['elo'] / max(p1['elo'] + p2['elo'], 1) * _MAX_BET + win_bonus
+
+        else: # len(p1_wins) == len(p2_wins) and p1['elo'] == p2['elo']
+            bet_on = 1
+            amount = _MAX_BET / 10
+            log.info('P1 and P2 have the same wins and elo, betting 10% max on P1 by default.')
+
+        # sanity checks
+        if amount < 0:
+            amount = 0
+        elif amount > _MAX_BET:
+            amount = _MAX_BET
+        
+        self.client.place_bet(bet_on, amount)
+
     def main(self):
         # self.client.login(_USER, _PASSWORD)
         self.client.spoof_login(
@@ -77,29 +110,8 @@ class SaltyController():
                     elif self.state['status'] == 'open':
                         self.update_mode()
                         self.update_balances()
-                        p1 = self.db.get_or_add_fighter(self.state['p1name'])
-                        p2 = self.db.get_or_add_fighter(self.state['p2name'])
-                        log.info('P1(%s) elo: %s, P2(%s) elo: %s' % (p1['name'], p1['elo'], p2['name'], p2['elo']))
-
-                        ##TODO: think of a better equation for amount
-                        if p1['elo'] > p2['elo']:
-                            bet_on = 1
-                            amount = p1['elo'] / (p1['elo'] + p2['elo']) * _MAX_BET
-                        elif p2['elo'] > p1['elo']:
-                            bet_on = 2
-                            amount = p2['elo'] / (p1['elo'] + p2['elo']) * _MAX_BET
-                        else:
-                            bet_on = 1
-                            amount = _MAX_BET / 10
-                            log.info('P1 and P2 have the same elo, betting 10% max on P1 by default.')
-
-                        if amount < 0:
-                            amount = 0
-                        if amount > _MAX_BET:
-                            amount = _MAX_BET
-                        
                         log.info('Wallet: %s, Tournament Balance: %s' % (self.balance, self.tournament_balance))
-                        self.client.place_bet(bet_on, amount)
+                        self.make_bet()
 
             except Exception as e:
                 log.exception('UH OH! %s' % e)

@@ -75,10 +75,13 @@ class SaltyDB():
         result = self.conn.execute('SELECT * FROM fighters WHERE guid =? or name =?', (fighter, fighter))
         return result.fetchone()
 
+    def get_fights(self, p1_guid, p2_guid):
+        guids = ",".join([str(p1_guid), str(p2_guid)])
+        result = self.conn.execute('SELECT * FROM fights WHERE p1 IN (?) and p2 in (?)', (guids, guids))
+        return result.fetchall()
+
     def increment_wins(self, fighter_guid, enemy_elo):
         result = self.conn.execute(
-            # 'UPDATE fighters SET elo=(elo*(wins+losses)+?+100)/(wins+losses+1), wins=wins+1 WHERE guid=?',
-            # (enemy_elo, fighter_guid)
             'UPDATE fighters SET elo=elo+(?*?), wins=wins+1 WHERE guid=?',
             (self.elo_stake, enemy_elo, fighter_guid)
         )
@@ -88,8 +91,6 @@ class SaltyDB():
 
     def increment_losses(self, fighter_guid):
         result = self.conn.execute(
-            # 'UPDATE fighters SET elo=(elo*(wins+losses)+?-100)/(wins+losses+1), losses=losses+1 WHERE guid=?',
-            # (enemy_elo, fighter_guid)
             'UPDATE fighters SET elo=elo-(?*elo), losses=losses+1 WHERE guid=?',
             (self.elo_stake, fighter_guid)
         )
