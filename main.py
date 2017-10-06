@@ -11,7 +11,8 @@ log = logging.getLogger(__name__)
 _REFRESH_INTERVAL = 5 # seconds
 _USER = 'saltyface@gmail.com'
 _PASSWORD = 'saltyface'
-_MAX_BET = 100
+_MAX_BET = 1000
+_MIN_BET = _MAX_BET * .01
 _WIN_MULTIPLIER = _MAX_BET * 0.1
 _BALANCE_SOURCE = 'page' # 'page' or 'ajax'
 
@@ -70,23 +71,22 @@ class SaltyController():
 
         win_bonus = abs(len(p1_wins) - len(p2_wins)) * _WIN_MULTIPLIER
 
-        ##TODO: think of a better equation for amount
         if len(p1_wins) > len(p2_wins) or (len(p1_wins) == len(p2_wins) and p1['elo'] > p2['elo']):
             bet_on = 1
-            amount = p1['elo'] / max(p1['elo'] + p2['elo'], 1) * _MAX_BET + win_bonus
+            amount = abs(p1['elo'] - p2['elo']) / max(abs(p1['elo']), abs(p2['elo'])) * _MAX_BET + win_bonus
 
         elif len(p2_wins) > len(p1_wins) or (len(p2_wins) == len(p1_wins) and p2['elo'] > p1['elo']):
             bet_on = 2
-            amount = p2['elo'] / max(p1['elo'] + p2['elo'], 1) * _MAX_BET + win_bonus
+            amount = abs(p1['elo'] - p2['elo']) / max(abs(p1['elo']), abs(p2['elo'])) * _MAX_BET + win_bonus
 
         else: # len(p1_wins) == len(p2_wins) and p1['elo'] == p2['elo']
             bet_on = 1
-            amount = _MAX_BET / 10
-            log.info('P1 and P2 have the same wins and elo, betting 10% max on P1 by default.')
+            amount = _MIN_BET
+            log.info('P1 and P2 have the same wins and elo, betting min on P1 by default.')
 
         # sanity checks
-        if amount < 0:
-            amount = 0
+        if amount < _MIN_BET:
+            amount = _MIN_BET
         elif amount > _MAX_BET:
             amount = _MAX_BET
         
