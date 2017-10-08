@@ -3,6 +3,8 @@ import saltyclient
 import saltydb
 import logging
 import time
+import signal
+import sys
 
 # logging.basicConfig(filename='salty.log', format='%(asctime)s-%(name)s-%(levelname)s: %(message)s', level=logging.INFO)
 logging.basicConfig(format='%(asctime)s-%(name)s-%(levelname)s: %(message)s', level=logging.INFO)
@@ -16,7 +18,7 @@ _MIN_BET = _MAX_BET * .01
 _WIN_MULTIPLIER = _MAX_BET * 0.1
 _BALANCE_SOURCE = 'page' # 'page' or 'ajax'
 
-class SaltyController():
+class SaltySession():
 
     def __init__(self):
         self.client = saltyclient.SaltyClient()
@@ -26,40 +28,46 @@ class SaltyController():
         self.balance = None
         self.tournament_balance = None
 
-    def update_mode(self):
-        if 'more matches until the next tournament!' in self.state['remaining']:
-            self.mode = 'normal'
-        elif 'characters are left in the bracket!' in self.state['remaining']:
-            self.mode = 'tournament'
-        elif 'exhibition matches left!' in self.state['remaining']:
-            self.mode = 'exhibition'
-
     def update_balances(self):
-        old_balance = self.balance
+        # gets tournament balance when in tournament mode
+        old_balance = None
+        if self.mode in ['normal', 'exhibition']:
+            old_balance = self.balance
+            self.balance = self.client.get_wallet_balance()[_BALANCE_SOURCE]
+
+        # will always get tournament balance
         old_tournament_balance = self.tournament_balance
-        self.balance = self.client.get_wallet_balance()[_BALANCE_SOURCE]
         self.tournament_balance = self.client.get_tournament_balance()
 
-        if old_balance is None or old_tournament_balance is None:
-            return # no change to log yet
-
-        if self.balance < old_balance:
+        if old_balance is not None and self.balance < old_balance:
             log.info('Lost bet! Old balance: %s, New balance: %s, Profit: %s' % (
                 old_balance, self.balance, self.balance - old_balance
             ))
-        elif self.balance > old_balance:
+        elif old_balance is not None and self.balance > old_balance:
             log.info('Won bet!  Old balance: %s, New balance: %s, Profit: %s' % (
                 old_balance, self.balance, self.balance - old_balance
             ))
 
-        if self.tournament_balance < old_tournament_balance:
+        if old_tournament_balance is not None and self.tournament_balance < old_tournament_balance:
             log.info('Lost tournament bet! Old balance: %s, New balance: %s, Profit: %s' % (
                 old_tournament_balance, self.tournament_balance, self.tournament_balance - old_tournament_balance
             ))
-        elif self.tournament_balance > old_tournament_balance:
+        elif old_tournament_balance is not None and self.tournament_balance > old_tournament_balance:
             log.info('Won tournament bet!  Old balance: %s, New balance: %s, Profit: %s' % (
                 old_tournament_balance, self.tournament_balance, self.tournament_balance - old_tournament_balance
             ))
+
+    def update_state(self):
+        self.state = self.client.get_state()
+        if 'more matches until the next tournament!' in self.state['remaining']:
+            self.mode = 'normal'
+        elif 'characters left in the bracket!' in self.state['remaining'] or 'FINAL ROUND!' in self.state['remaining']:
+            self.mode = 'tournament'
+        elif 'exhibition matches left!' in self.state['remaining']:
+            self.mode = 'exhibition'
+        else:
+            raise RuntimeError('Could not determine mode: %s' % self.state['remaining'])
+        return self.state
 
     def make_bet(self):
         p1 = self.db.get_or_add_fighter(self.state['p1name'])
@@ -71,6 +79,7 @@ class SaltyController():
 
         win_bonus = abs(len(p1_wins) - len(p2_wins)) * _WIN_MULTIPLIER
 
+        ##TODO: implement sureness (sample size, wins + losses)
         if len(p1_wins) > len(p2_wins) or (len(p1_wins) == len(p2_wins) and p1['elo'] > p2['elo']):
             bet_on = 1
             amount = abs(p1['elo'] - p2['elo']) / max(abs(p1['elo']), abs(p2['elo'])) * _MAX_BET + win_bonus
@@ -92,24 +101,38 @@ class SaltyController():
         
         self.client.place_bet(bet_on, amount)
 
-    def main(self):
+    def start(self):
         # self.client.login(_USER, _PASSWORD)
         self.client.spoof_login(
                 '__cfduid=d4ad05a1bdff57927e01f223ce5d3cc771503283048; PHPSESSID=kpplnfa9oks5b4ekodobqg66s2',
                 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.91 Safari/537.36'
         )
+        
+        session_started = False
+        signal.signal(signal.SIGINT, self.stop)
+        signal.signal(signal.SIGTERM, self.stop)
         while True:
             try:
-                new_state = self.client.get_state()
-                if new_state != self.state:
-                    self.state = new_state
+                old_state = self.state
+                self.update_state()
+                if old_state != self.state:
                     log.info(self.state)
 
-                    if self.state['status'] in ['1', '2']: # fight over, have winner
+                    # fight over, have winner
+                    if self.state['status'] in ['1', '2']:
                         self.db.add_fight(self.state['p1name'], self.state['p2name'], int(self.state['status']))
+
                     elif self.state['status'] == 'open':
-                        self.update_mode()
                         self.update_balances()
+                        if not session_started and self.mode in ['normal', 'exhibition']:
+                            try:
+                                self.db.start_session(self.balance)
+                                session_started = True
+                            except saltydb.OpenSessionError as e:
+                                self.db.end_session(self.balance)
+                                self.db.start_session(self.balance)
+                                session_started = True
+
                         log.info('Wallet: %s, Tournament Balance: %s' % (self.balance, self.tournament_balance))
                         self.make_bet()
 
@@ -117,5 +140,9 @@ class SaltyController():
                 log.exception('UH OH! %s' % e)
             time.sleep(_REFRESH_INTERVAL)
 
+    def stop(self, signum=None, frame=None):
+        self.db.end_session(self.balance)
+        sys.exit()
+
 if __name__ == '__main__':
-    SaltyController().main()
+    SaltySession().start()

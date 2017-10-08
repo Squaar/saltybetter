@@ -11,6 +11,7 @@ class SaltyDB():
         self.elo_stake = elo_stake
         self.conn = sqlite3.connect(db)
         self.conn.row_factory = sqlite3.Row
+        ##TODO: add tournament bool to fights
         self.conn.executescript('''
             CREATE TABLE IF NOT EXISTS fighters(
                 guid INTEGER PRIMARY KEY,
@@ -28,6 +29,14 @@ class SaltyDB():
                 time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(p1) REFERENCES fighters(guid),
                 FOREIGN KEY(p2) REFERENCES fighters(guid)
+            );
+
+            CREATE TABLE IF NOT EXISTS sessions(
+                guid INTEGER PRIMARY KEY,
+                startTS DATETIME DEFAULT CURRENT_TIMESTAMP,
+                endTS DATETIME,
+                startBalance INT NOT NULL,
+                endBalance INT
             );
         ''')
         self.conn.commit()
@@ -98,3 +107,33 @@ class SaltyDB():
         updated = self.get_fighter(fighter_guid)
         log.info('Incremented losses: %s' % list(updated))
 
+    def start_session(self, balance):
+        if balance is None:
+            raise TypeError('Balance cannot be None')
+        result = self.conn.execute('SELECT * FROM sessions WHERE endTS IS NULL')
+        open_sessions = result.fetchall()
+        if len(open_sessions) > 0:
+            raise OpenSessionError('A session is already open!', len(open_sessions))
+        
+        result = self.conn.execute('INSERT INTO sessions (startBalance) VALUES (?)', (balance,))
+        self.conn.commit()
+        log.info('Session started.')
+
+    # does nothing if there are no open sessions, ends only the most recent session
+    def end_session(self, balance):
+        if balance is None:
+            raise TypeError('Balance cannot be None')
+        result = self.conn.execute(
+            'UPDATE sessions SET endTS=(SELECT MAX(time) FROM fights), endBalance=? WHERE guid=(SELECT MAX(guid) FROM sessions) AND endTS IS NULL', 
+            (balance,)
+        )
+        if result.rowcount > 1:
+            log.warning('More than one session closed: %s' % result.rowcount)
+        self.conn.commit()
+        log.info('Session ended.')
+
+class OpenSessionError(RuntimeError):
+    def __init__(self, message, open_sessions):
+        super().__init__(message, open_sessions)
+        self.message = message
+        self.open_sessions = open_sessions
