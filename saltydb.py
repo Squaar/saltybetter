@@ -117,7 +117,10 @@ class SaltyDB():
         
         result = self.conn.execute('INSERT INTO sessions (startBalance) VALUES (?)', (balance,))
         self.conn.commit()
-        log.info('Session started.')
+
+        result = self.conn.execute('SELECT * FROM sessions WHERE guid=(SELECT MAX(guid) FROM sessions)')
+        new_session = result.fetchone()
+        log.info('Session started: %s' % list(new_session))
 
     # does nothing if there are no open sessions, ends only the most recent session
     def end_session(self, balance):
@@ -130,7 +133,10 @@ class SaltyDB():
         if result.rowcount > 1:
             log.warning('More than one session closed: %s' % result.rowcount)
         self.conn.commit()
-        log.info('Session ended.')
+
+        result = self.conn.execute('SELECT * FROM sessions WHERE guid=(SELECT MAX(guid) FROM sessions)')
+        closed_session = result.fetchone()
+        log.info('Session ended: %s' % list(closed_session))
 
 class OpenSessionError(RuntimeError):
     def __init__(self, message, open_sessions):

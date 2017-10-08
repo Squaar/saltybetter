@@ -75,7 +75,7 @@ class SaltySession():
         past_fights = self.db.get_fights(p1['guid'], p2['guid'])
         p1_wins = [fight for fight in past_fights if fight['winner'] == p1['guid']]
         p2_wins = [fight for fight in past_fights if fight['winner'] == p2['guid']]
-        log.info('P1(%s) elo: %s, wins: %s; P2(%s) elo: %s, wins: %s' % (p1['name'], p1['elo'], len(p1_wins), p2['name'], p2['elo'], len(p2_wins)))
+        log.info('P1(%s) elo: %s, wins vs p2: %s; P2(%s) elo: %s, wins vs p1: %s' % (p1['name'], p1['elo'], len(p1_wins), p2['name'], p2['elo'], len(p2_wins)))
 
         win_bonus = abs(len(p1_wins) - len(p2_wins)) * _WIN_MULTIPLIER
 
