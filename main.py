@@ -59,9 +59,9 @@ class SaltySession():
 
     def update_state(self):
         self.state = self.client.get_state()
-        if 'more matches until the next tournament!' in self.state['remaining']:
+        if 'more matches until the next tournament!' in self.state['remaining'] or 'Tournament mode will be activated after the next match!' in self.state['remaining']:
             self.mode = 'normal'
-        elif 'characters left in the bracket!' in self.state['remaining'] or 'FINAL ROUND!' in self.state['remaining']:
+        elif 'characters are left in the bracket!' in self.state['remaining'] or 'FINAL ROUND!' in self.state['remaining']:
             self.mode = 'tournament'
         elif 'exhibition matches left!' in self.state['remaining']:
             self.mode = 'exhibition'
