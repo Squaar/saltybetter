@@ -1,6 +1,7 @@
 #!/home/squaar/brogramming/python/saltybetter/.env/bin/python3
 import saltyclient
 import saltydb
+import saltyai
 import logging
 import time
 import signal
@@ -27,6 +28,9 @@ class SaltySession():
         self.mode = None
         self.balance = None
         self.tournament_balance = None
+        self.ai = saltyai.LogRegression()
+        self.ai.train(self.db.get_training_data())
+        import pdb;pdb.set_trace()
 
     def update_balances(self):
         # gets tournament balance when in tournament mode
@@ -80,6 +84,7 @@ class SaltySession():
         win_bonus = abs(len(p1_wins) - len(p2_wins)) * _WIN_MULTIPLIER
 
         ##TODO: implement sureness (sample size, wins + losses)
+        ##TODO: use logistic regression and be smart
         if len(p1_wins) > len(p2_wins) or (len(p1_wins) == len(p2_wins) and p1['elo'] > p2['elo']):
             bet_on = 1
             amount = abs(p1['elo'] - p2['elo']) / max(abs(p1['elo']), abs(p2['elo'])) * _MAX_BET + win_bonus
@@ -101,6 +106,7 @@ class SaltySession():
         
         self.client.place_bet(bet_on, amount)
 
+    ##TODO: cmd line args
     def start(self):
         # self.client.login(_USER, _PASSWORD)
         self.client.spoof_login(

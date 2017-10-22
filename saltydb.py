@@ -11,7 +11,7 @@ class SaltyDB():
         self.elo_stake = elo_stake
         self.conn = sqlite3.connect(db)
         self.conn.row_factory = sqlite3.Row
-        ##TODO: add tournament bool to fights
+        ##TODO: add mode to fights
         self.conn.executescript('''
             CREATE TABLE IF NOT EXISTS fighters(
                 guid INTEGER PRIMARY KEY,
@@ -137,6 +137,23 @@ class SaltyDB():
         result = self.conn.execute('SELECT * FROM sessions WHERE guid=(SELECT MAX(guid) FROM sessions)')
         closed_session = result.fetchone()
         log.info('Session ended: %s' % list(closed_session))
+
+    def get_training_data(self):
+        log.info('Generating training data, this may take a few moments...')
+        result = self.conn.execute('''
+            SELECT p1.elo AS p1elo, p2.elo AS p2elo,
+            (SELECT count(1) FROM fights WHERE p1 IN (f.p1, f.p2) AND p2 IN (f.p1, f.p2) AND winner=1) AS p1winsvp2,
+            (SELECT count(1) FROM fights WHERE p1 IN (f.p1, f.p2) AND p2 IN (f.p1, f.p2) AND winner=2) AS p2winsvp1,
+            CAST(p1.wins AS FLOAT) / CAST((p1.wins + p1.losses) AS FLOAT) AS p1winpct,
+            CAST(p2.wins AS FLOAT) / CAST((p2.wins + p2.losses) AS FLOAT) AS p2winpct,
+            f.winner AS winner
+            FROM fights f
+            JOIN fighters p1 ON p1.guid = f.p1
+            JOIN fighters p2 ON p2.guid = f.p2
+        ''')
+        data = result.fetchall()
+        log.info('Training data generated: %s' % len(data))
+        return data
 
 class OpenSessionError(RuntimeError):
     def __init__(self, message, open_sessions):
