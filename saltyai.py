@@ -21,21 +21,27 @@ class LogRegression:
     def p(self, p1elo, p2elo, p1winsvp2, p2winsvp1, p1winpct, p2winpct):
         linear = self.b_bias + self.b_p1elo*p1elo + self.b_p2elo*p2elo + self.b_p1winsvp2*p1winsvp2 + self.b_p2winsvp1*p2winsvp1
         linear += self.b_p1winpct*p1winpct + self.b_p2winpct*p2winpct
-        logified = 1.0 / (1.0 + exp(-linear))
-        import pdb; pdb.set_trace()
+        try:
+            logified = 1.0 / (1.0 + exp(-linear))
+        except OverflowError as e:
+            if linear > 0:
+                logified = 1
+            elif linear < 0:
+                logified = 0
+        # import pdb; pdb.set_trace()
         return logified
 
-    def train(self, training_data, epochs=1):
+    def train(self, training_data, epochs=10):
         self.log_betas()
         for i in range(epochs):
             correct = 0
             for fight in training_data:
-                self.log_betas()
+                # self.log_betas()
                 ##TODO: prediction always goes to 1.0 after first training instance, not updating betas
                 prediction = self.p(fight['p1elo'], fight['p2elo'], fight['p1winsvp2'], fight['p2winsvp1'], fight['p1winpct'], fight['p2winpct'])
-                if prediction > 0.5 and fight['winner'] == 2:
+                if (prediction >= 0.5 and fight['winner'] == 1) or (prediction < 0.5 and fight['winner'] == 0):
                     correct += 1
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 self.b_bias = self.recalc_beta(self.b_bias, fight['winner'], prediction, 1) # bias always has coefficient 1
                 self.b_p1elo = self.recalc_beta(self.b_p1elo, fight['winner'], prediction, fight['p1elo'])
                 self.b_p2elo = self.recalc_beta(self.b_p2elo, fight['winner'], prediction, fight['p2elo'])
@@ -53,8 +59,8 @@ class LogRegression:
     # x: coefficient for beta val to update
     ##TODO: this is where it's broken... once prediction == 1, (1-prediction) == 0, so recalc will always = b and never change
     def recalc_beta(self, b, y, prediction, x):
-        recalc =  b + self._ALPHA * (y-prediction) * prediction * (1-prediction) * x
-        import pdb;pdb.set_trace()
+        recalc =  b + self._ALPHA * (y-prediction) * x
+        # import pdb;pdb.set_trace()
         return recalc
    
     def log_betas(self):

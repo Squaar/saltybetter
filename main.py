@@ -30,7 +30,6 @@ class SaltySession():
         self.tournament_balance = None
         self.ai = saltyai.LogRegression()
         self.ai.train(self.db.get_training_data())
-        import pdb;pdb.set_trace()
 
     def update_balances(self):
         # gets tournament balance when in tournament mode
@@ -77,26 +76,23 @@ class SaltySession():
         p1 = self.db.get_or_add_fighter(self.state['p1name'])
         p2 = self.db.get_or_add_fighter(self.state['p2name'])
         past_fights = self.db.get_fights(p1['guid'], p2['guid'])
-        p1_wins = [fight for fight in past_fights if fight['winner'] == p1['guid']]
-        p2_wins = [fight for fight in past_fights if fight['winner'] == p2['guid']]
-        log.info('P1(%s) elo: %s, wins vs p2: %s; P2(%s) elo: %s, wins vs p1: %s' % (p1['name'], p1['elo'], len(p1_wins), p2['name'], p2['elo'], len(p2_wins)))
+        p1_wins = len([fight for fight in past_fights if fight['winner'] == p1['guid']])
+        p2_wins = len([fight for fight in past_fights if fight['winner'] == p2['guid']])
+        p1_winpct = p1['wins'] / (p1['wins'] + p1['losses'])
+        p2_winpct = p2['wins'] / (p2['wins'] + p2['losses'])
+        log.info('P1(%s) elo: %s, wins vs p2: %s, win pct: %s; P2(%s) elo: %s, wins vs p1: %s, win pct: %s' % (p1['name'], p1['elo'], p1_wins, p1_winpct, p2['name'], p2['elo'], p2_wins, p2_winpct))
 
-        win_bonus = abs(len(p1_wins) - len(p2_wins)) * _WIN_MULTIPLIER
-
-        ##TODO: implement sureness (sample size, wins + losses)
-        ##TODO: use logistic regression and be smart
-        if len(p1_wins) > len(p2_wins) or (len(p1_wins) == len(p2_wins) and p1['elo'] > p2['elo']):
-            bet_on = 1
-            amount = abs(p1['elo'] - p2['elo']) / max(abs(p1['elo']), abs(p2['elo'])) * _MAX_BET + win_bonus
-
-        elif len(p2_wins) > len(p1_wins) or (len(p2_wins) == len(p1_wins) and p2['elo'] > p1['elo']):
+        prediction = self.ai.p(p1['elo'], p2['elo'], p1_wins, p2_wins, p1_winpct, p2_winpct)
+        log.info('Prediction: %s' % prediction)
+        if prediction > 0.5:
             bet_on = 2
-            amount = abs(p1['elo'] - p2['elo']) / max(abs(p1['elo']), abs(p2['elo'])) * _MAX_BET + win_bonus
-
-        else: # len(p1_wins) == len(p2_wins) and p1['elo'] == p2['elo']
+        elif prediction < 0.5:
             bet_on = 1
-            amount = _MIN_BET
-            log.info('P1 and P2 have the same wins and elo, betting min on P1 by default.')
+        else:
+            bet_on = 1
+            log.info('Prediction is a tie!')
+        
+        amount = 10
 
         # sanity checks
         if amount < _MIN_BET:
