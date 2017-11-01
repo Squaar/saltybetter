@@ -12,6 +12,8 @@ class SaltyDB():
         self.conn = sqlite3.connect(db)
         self.conn.row_factory = sqlite3.Row
         ##TODO: add mode to fights
+        ##TODO: add # of won/lost bets to session
+        ##TODO: add table to keep betas between sesisons
         self.conn.executescript('''
             CREATE TABLE IF NOT EXISTS fighters(
                 guid INTEGER PRIMARY KEY,

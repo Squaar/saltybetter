@@ -123,6 +123,7 @@ class SaltySession():
                     # fight over, have winner
                     if self.state['status'] in ['1', '2']:
                         self.db.add_fight(self.state['p1name'], self.state['p2name'], int(self.state['status']))
+                        ##TODO: retrain with new fight results
 
                     elif self.state['status'] == 'open':
                         self.update_balances()
