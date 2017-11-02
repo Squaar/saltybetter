@@ -106,7 +106,7 @@ class SaltySession():
     def start(self):
         # self.client.login(_USER, _PASSWORD)
         self.client.spoof_login(
-                '__cfduid=d4ad05a1bdff57927e01f223ce5d3cc771503283048; PHPSESSID=kpplnfa9oks5b4ekodobqg66s2',
+                '__cfduid=d4ad05a1bdff57927e01f223ce5d3cc771503283048; PHPSESSID=h82q4bu5iaca55a90scr8962u6',
                 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.91 Safari/537.36'
         )
         
