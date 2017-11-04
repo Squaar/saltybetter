@@ -78,9 +78,23 @@ class SaltySession():
         past_fights = self.db.get_fights(p1['guid'], p2['guid'])
         p1_wins = len([fight for fight in past_fights if fight['winner'] == p1['guid']])
         p2_wins = len([fight for fight in past_fights if fight['winner'] == p2['guid']])
-        p1_winpct = p1['wins'] / (p1['wins'] + p1['losses'])
-        p2_winpct = p2['wins'] / (p2['wins'] + p2['losses'])
-        log.info('P1(%s) elo: %s, wins vs p2: %s, win pct: %s; P2(%s) elo: %s, wins vs p1: %s, win pct: %s' % (p1['name'], p1['elo'], p1_wins, p1_winpct, p2['name'], p2['elo'], p2_wins, p2_winpct))
+
+        ##TODO: think of a better solution to avoid / by 0
+        p1_winpct = 0.5 if p1['wins'] + p1['losses'] == 0 else p1['wins'] / (p1['wins'] + p1['losses'])
+        p2_winpct = 0.5 if p2['wins'] + p2['losses'] == 0 else p2['wins'] / (p2['wins'] + p2['losses'])
+        
+        log.info('P1({name}) elo: {elo}, wins vs p2: {wins}, win pct: {winpct}; '.format(
+            name = p1['name'],
+            elo = p1['elo'],
+            wins = p1_wins,
+            winpct = p1_winpct
+        ))
+        log.info('P2({name}) elo: {elo}, wins vs p1: {wins}, win pct: {winpct}'.format(
+            name = p2['name'],
+            elo = p2['elo'],
+            wins = p2_wins,
+            winpct = p2_winpct
+        ))
 
         prediction = self.ai.p(p1['elo'], p2['elo'], p1_wins, p2_wins, p1_winpct, p2_winpct)
         log.info('Prediction: %s' % prediction)

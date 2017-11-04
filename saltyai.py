@@ -5,6 +5,7 @@ import logging
 log = logging.getLogger(__name__)
 
 ##TODO: can we generalize this to just take a table of training data and which column is Y?
+##TODO: maybe just use p1-p2 for each stat as betas?
 class LogRegression:
 
     _ALPHA = 0.2
@@ -29,6 +30,7 @@ class LogRegression:
                 logified = 1
             elif linear < 0:
                 logified = 0
+            # linear == 0 wouldn't throw exception
         return logified
 
     def train(self, training_data, epochs=10):
