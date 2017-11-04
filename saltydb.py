@@ -35,10 +35,12 @@ class SaltyDB():
 
             CREATE TABLE IF NOT EXISTS sessions(
                 guid INTEGER PRIMARY KEY,
-                startTS DATETIME DEFAULT CURRENT_TIMESTAMP,
+                startTS DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 endTS DATETIME,
                 startBalance INT NOT NULL,
-                endBalance INT
+                endBalance INT,
+                wonBets INT NOT NULL DEFAULT 0,
+                lostBets INT NOT NULL DEFAULT 0
             );
         ''')
         self.conn.commit()
@@ -66,6 +68,14 @@ class SaltyDB():
         new_fight = result.fetchone()
         log.info('Fight recorded %s' % list(new_fight))
         return new_fight
+
+    def increment_won_bets(self):
+        result = self.conn.execute('UPDATE sessions SET wonBets = wonBets + 1 WHERE guid = (SELECT MAX(guid) FROM sessions)')
+        self.conn.commit()
+
+    def increment_lost_bets(self):
+        result = self.conn.execute('UPDATE sessions SET lostBets = lostBets + 1 WHERE guid = (SELECT MAX(guid) FROM sessions)')
+        self.conn.commit()
 
     # returns newly created fighter
     def add_fighter(self, name):

@@ -46,19 +46,23 @@ class SaltySession():
             log.info('Lost bet! Old balance: %s, New balance: %s, Profit: %s' % (
                 old_balance, self.balance, self.balance - old_balance
             ))
+            self.db.increment_lost_bets()
         elif old_balance is not None and self.balance > old_balance:
             log.info('Won bet!  Old balance: %s, New balance: %s, Profit: %s' % (
                 old_balance, self.balance, self.balance - old_balance
             ))
+            self.db.increment_won_bets()
 
         if old_tournament_balance is not None and self.tournament_balance < old_tournament_balance:
             log.info('Lost tournament bet! Old balance: %s, New balance: %s, Profit: %s' % (
                 old_tournament_balance, self.tournament_balance, self.tournament_balance - old_tournament_balance
             ))
+            self.db.increment_lost_bets()
         elif old_tournament_balance is not None and self.tournament_balance > old_tournament_balance:
             log.info('Won tournament bet!  Old balance: %s, New balance: %s, Profit: %s' % (
                 old_tournament_balance, self.tournament_balance, self.tournament_balance - old_tournament_balance
             ))
+            self.db.increment_won_bets()
 
     def update_state(self):
         self.state = self.client.get_state()
