@@ -12,7 +12,6 @@ class SaltyDB():
         self.conn = sqlite3.connect(db)
         self.conn.row_factory = sqlite3.Row
         ##TODO: add mode to fights
-        ##TODO: add # of won/lost bets to session
         ##TODO: add table to keep betas between sesisons
         self.conn.executescript('''
             CREATE TABLE IF NOT EXISTS fighters(
@@ -153,16 +152,22 @@ class SaltyDB():
     def get_training_data(self):
         log.info('Generating training data, this may take a few moments...')
         # winner - 1 to put in range 0,1. p() will predict probability of p2 winning
-        result = self.conn.execute('''
-            SELECT p1.elo AS p1elo, p2.elo AS p2elo,
-            (SELECT count(1) FROM fights WHERE p1 IN (f.p1, f.p2) AND p2 IN (f.p1, f.p2) AND winner=1) AS p1winsvp2,
-            (SELECT count(1) FROM fights WHERE p1 IN (f.p1, f.p2) AND p2 IN (f.p1, f.p2) AND winner=2) AS p2winsvp1,
-            CAST(p1.wins AS FLOAT) / CAST((p1.wins + p1.losses) AS FLOAT) AS p1winpct,
-            CAST(p2.wins AS FLOAT) / CAST((p2.wins + p2.losses) AS FLOAT) AS p2winpct,
-            f.winner - 1 AS winner
-            FROM fights f
-            JOIN fighters p1 ON p1.guid = f.p1
-            JOIN fighters p2 ON p2.guid = f.p2
+        result = self.conn.execute ('''
+            SELECT p1elo - p2elo AS elo_diff,
+            p1winsvp2 - p2winsvp1 AS wins_diff,
+            p1winpct - p2winpct AS win_pct_diff,
+            winner
+            FROM (
+                SELECT p1.elo AS p1elo, p2.elo AS p2elo,
+                (SELECT count(1) FROM fights WHERE p1 IN (f.p1, f.p2) AND p2 IN (f.p1, f.p2) AND winner=1) AS p1winsvp2,
+                (SELECT count(1) FROM fights WHERE p1 IN (f.p1, f.p2) AND p2 IN (f.p1, f.p2) AND winner=2) AS p2winsvp1,
+                CAST(p1.wins AS FLOAT) / CAST((p1.wins + p1.losses) AS FLOAT) AS p1winpct,
+                CAST(p2.wins AS FLOAT) / CAST((p2.wins + p2.losses) AS FLOAT) AS p2winpct,
+                f.winner - 1 AS winner
+                FROM fights f
+                JOIN fighters p1 ON p1.guid = f.p1
+                JOIN fighters p2 ON p2.guid = f.p2
+            )
         ''')
         data = result.fetchall()
         log.info('Training data generated: %s' % len(data))

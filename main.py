@@ -28,8 +28,11 @@ class SaltySession():
         self.mode = None
         self.balance = None
         self.tournament_balance = None
-        self.ai = saltyai.LogRegression()
-        self.ai.train(self.db.get_training_data())
+
+        training_data = self.db.get_training_data()
+        ai_schema = [key for key in training_data[0].keys() if key != 'winner']
+        self.ai = saltyai.LogRegression(ai_schema)
+        self.ai.train(training_data, 'winner')
 
     def update_balances(self):
         # gets tournament balance when in tournament mode
@@ -99,8 +102,11 @@ class SaltySession():
             wins = p2_wins,
             winpct = p2_winpct
         ))
-
-        prediction = self.ai.p(p1['elo'], p2['elo'], p1_wins, p2_wins, p1_winpct, p2_winpct)
+        prediction = self.ai.p(
+            elo_diff = p1['elo'] - p2['elo'], 
+            wins_diff = p1_wins - p2_wins, 
+            win_pct_diff = p1_winpct - p2_winpct, 
+        )
         log.info('Prediction: %s' % prediction)
         if prediction > 0.5:
             bet_on = 2
