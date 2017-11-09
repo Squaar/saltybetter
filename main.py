@@ -73,7 +73,7 @@ class SaltySession():
             self.mode = 'normal'
         elif 'characters are left in the bracket!' in self.state['remaining'] or 'FINAL ROUND!' in self.state['remaining']:
             self.mode = 'tournament'
-        elif 'exhibition matches left!' in self.state['remaining']:
+        elif 'exhibition matches left!' in self.state['remaining'] or 'after the next exhibition match!' in self.state['remaining']:
             self.mode = 'exhibition'
         else:
             raise RuntimeError('Could not determine mode: %s' % self.state['remaining'])
@@ -137,6 +137,7 @@ class SaltySession():
         session_started = False
         signal.signal(signal.SIGINT, self.stop)
         signal.signal(signal.SIGTERM, self.stop)
+
         while True:
             try:
                 old_state = self.state
@@ -146,7 +147,7 @@ class SaltySession():
 
                     # fight over, have winner
                     if self.state['status'] in ['1', '2']:
-                        self.db.add_fight(self.state['p1name'], self.state['p2name'], int(self.state['status']))
+                        self.db.add_fight(self.state['p1name'], self.state['p2name'], int(self.state['status']), self.mode)
                         ##TODO: retrain with new fight results
 
                     elif self.state['status'] == 'open':

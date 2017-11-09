@@ -28,6 +28,7 @@ class SaltyDB():
                 p2 INT NOT NULL,
                 winner INT NOT NULL,
                 time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                mode TEXT NOT NULL,
                 FOREIGN KEY(p1) REFERENCES fighters(guid),
                 FOREIGN KEY(p2) REFERENCES fighters(guid)
             );
@@ -44,7 +45,7 @@ class SaltyDB():
         ''')
         self.conn.commit()
     
-    def add_fight(self, p1name, p2name, winner):
+    def add_fight(self, p1name, p2name, winner, mode):
         if p1name == p2name:
             log.warning('Self fight detected. Ignoring. %s' % state['p1name'])
             return
@@ -61,7 +62,7 @@ class SaltyDB():
         else:
             raise RuntimeError("Winner must be in [1, 2]: %s" % winner)
 
-        result = self.conn.execute('INSERT INTO fights (p1, p2, winner) VALUES (?, ?, ?)', (p1['guid'], p2['guid'], winner))
+        result = self.conn.execute('INSERT INTO fights (p1, p2, winner, mode) VALUES (?, ?, ?, ?)', (p1['guid'], p2['guid'], winner, mode))
         self.conn.commit()
         result = self.conn.execute('SELECT * FROM fights WHERE ROWID=?', (result.lastrowid,))
         new_fight = result.fetchone()
