@@ -42,6 +42,11 @@ class SaltyDB():
                 lostBets INT NOT NULL DEFAULT 0
             );
 
+            DROP VIEW IF EXISTS v_sessions;
+            CREATE VIEW IF NOT EXISTS v_sessions AS
+            SELECT *, 
+                CAST(wonBets AS REAL) / CAST((wonBets + lostBets) AS REAL) * 100 AS wonBetsPct
+            FROM sessions;
         ''')
         self.conn.commit()
     
