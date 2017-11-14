@@ -1,6 +1,7 @@
 from math import exp
 from random import shuffle
 from pprint import pformat
+from decimal import Decimal
 import logging
 
 log = logging.getLogger(__name__)
@@ -29,18 +30,11 @@ class LogRegression:
         coefficients['bias'] = 1
         kwargs.update(coefficients)
 
-        linear = 0
+        linear = Decimal(0)
         for k in self.betas:
-            linear += self.betas[k] * kwargs[k]
+            linear += Decimal(self.betas[k]) * Decimal(kwargs[k])
 
-        try:
-            logified = 1.0 / (1.0 + exp(-linear))
-        except OverflowError as e: # good enough
-            if linear > 0:
-                logified = 1
-            elif linear < 0:
-                logified = 0
-            # linear == 0 wouldn't throw exception
+        logified = Decimal(1) / (Decimal(1) + (linear * Decimal(-1)).exp())
         return logified
 
     def train(self, training_data, y_key, epochs=10):
@@ -67,5 +61,5 @@ class LogRegression:
     # prediction: current probability of y=1
     # x: coefficient for beta val to update
     def recalc_beta(self, b, y, prediction, x):
-        recalc =  b + self._ALPHA * (y-prediction) * x
+        recalc =  Decimal(b) + Decimal(self._ALPHA) * (Decimal(y) - Decimal(prediction)) * Decimal(x)
         return recalc

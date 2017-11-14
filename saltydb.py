@@ -11,7 +11,6 @@ class SaltyDB():
         self.elo_stake = elo_stake
         self.conn = sqlite3.connect(db)
         self.conn.row_factory = sqlite3.Row
-        ##TODO: add mode to fights
         ##TODO: add table to keep betas between sesisons
         self.conn.executescript('''
             CREATE TABLE IF NOT EXISTS fighters(
@@ -42,9 +41,25 @@ class SaltyDB():
                 wonBets INT NOT NULL DEFAULT 0,
                 lostBets INT NOT NULL DEFAULT 0
             );
+
         ''')
         self.conn.commit()
     
+    '''
+
+            CREATE TABLE IF NOT EXISTS bets(
+                guid INTEGER PRIMARY KEY,
+                fight INT NOT NULL,
+                session INT NOT NULL,
+                amount INT NOT NULL,
+                won INT,
+                preBalance INT NOT NULL,
+                profit INT,
+                FOREIGN KEY(fight) REFERENCES fights(guid),
+                FOREIGN KEY(session) REFERENCES sessions(guid)
+            );
+    '''
+
     def add_fight(self, p1name, p2name, winner, mode):
         if p1name == p2name:
             log.warning('Self fight detected. Ignoring. %s' % state['p1name'])
