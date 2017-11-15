@@ -67,7 +67,7 @@ class SaltyDB():
 
     def add_fight(self, p1name, p2name, winner, mode):
         if p1name == p2name:
-            log.warning('Self fight detected. Ignoring. %s' % state['p1name'])
+            log.warning('Self fight detected. Ignoring. %s' % p1name)
             return
         
         p1 = self.get_or_add_fighter(p1name)
