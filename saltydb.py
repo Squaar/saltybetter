@@ -21,6 +21,13 @@ class SaltyDB():
                 losses INT NOT NULL DEFAULT 0
             );
 
+            DROP VIEW IF EXISTS v_fighters;
+            CREATE VIEW IF NOT EXISTS v_fighters AS
+            SELECT *,
+                wins + losses AS nFights,
+                name LIKE 'Team %' AS isTournament
+            FROM fighters;
+
             CREATE TABLE IF NOT EXISTS fights(
                 guid INTEGER PRIMARY KEY,
                 p1 INT NOT NULL,
@@ -31,6 +38,12 @@ class SaltyDB():
                 FOREIGN KEY(p1) REFERENCES fighters(guid),
                 FOREIGN KEY(p2) REFERENCES fighters(guid)
             );
+
+            DROP VIEW IF EXISTS v_fights;
+            CREATE VIEW IF NOT EXISTS v_fights AS
+            SELECT *,
+                (SELECT MAX(guid) FROM sessions WHERE fights.time > sessions.startTS) AS session
+            FROM fights;
 
             CREATE TABLE IF NOT EXISTS sessions(
                 guid INTEGER PRIMARY KEY,
@@ -47,10 +60,6 @@ class SaltyDB():
             SELECT *, 
                 CAST(wonBets AS REAL) / CAST((wonBets + lostBets) AS REAL) * 100 AS wonBetsPct
             FROM sessions;
-        ''')
-        self.conn.commit()
-    
-    '''
 
             CREATE TABLE IF NOT EXISTS bets(
                 guid INTEGER PRIMARY KEY,
@@ -63,6 +72,11 @@ class SaltyDB():
                 FOREIGN KEY(fight) REFERENCES fights(guid),
                 FOREIGN KEY(session) REFERENCES sessions(guid)
             );
+        ''')
+        self.conn.commit()
+    
+    '''
+
     '''
 
     def add_fight(self, p1name, p2name, winner, mode):
