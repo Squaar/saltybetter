@@ -25,6 +25,7 @@ class SaltyDB():
             CREATE VIEW IF NOT EXISTS v_fighters AS
             SELECT *,
                 wins + losses AS nFights,
+                CAST(wins AS REAL) / CAST(wins + losses AS REAL) AS winPct
                 name LIKE 'Team %' AS isTournament
             FROM fighters;
 
