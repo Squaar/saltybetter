@@ -58,7 +58,13 @@ class SaltyDB():
 
             DROP VIEW IF EXISTS v_sessions;
             CREATE VIEW IF NOT EXISTS v_sessions AS
-            SELECT *, 
+            SELECT guid, 
+                DATETIME(startTS, 'localtime') AS startTS,
+                DATETIME(endTS, 'localtime') AS endTS,
+                startBalance,
+                endBalance,
+                wonBets, 
+                lostBets,
                 CAST(wonBets AS REAL) / CAST((wonBets + lostBets) AS REAL) * 100 AS wonBetsPct
             FROM sessions;
 
