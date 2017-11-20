@@ -128,12 +128,24 @@ class SaltyDB():
 
     # fighter can be name or guid
     def get_fighter(self, fighter):
-        result = self.conn.execute('SELECT * FROM fighters WHERE guid =? or name =?', (fighter, fighter))
+        result = self.conn.execute('SELECT * FROM fighters WHERE guid = ? or name = ?', (fighter, fighter))
         return result.fetchone()
 
     def get_fights(self, p1_guid, p2_guid):
         guids = ",".join([str(p1_guid), str(p2_guid)])
         result = self.conn.execute('SELECT * FROM fights WHERE p1 IN (?) and p2 in (?)', (guids, guids))
+        return result.fetchall()
+    
+    # get p1's wins against p2. includes where #s reversed
+    def get_wins_against(self, p1_guid, p2_guid):
+        result = self.conn.execute('''
+            SELECT * FROM fights 
+            WHERE (p1 = ? AND p2 = ? AND winner = 1)
+            OR    (p1 = ? AND p2 = ? AND winner = 2)
+        ''',(
+            p1_guid, p2_guid,
+            p2_guid, p1_guid
+        ))
         return result.fetchall()
 
     def increment_wins(self, fighter_guid, enemy_elo):
@@ -195,8 +207,14 @@ class SaltyDB():
             winner
             FROM (
                 SELECT p1.elo AS p1elo, p2.elo AS p2elo,
-                (SELECT count(1) FROM fights WHERE p1 IN (f.p1, f.p2) AND p2 IN (f.p1, f.p2) AND winner=1) AS p1winsvp2,
-                (SELECT count(1) FROM fights WHERE p1 IN (f.p1, f.p2) AND p2 IN (f.p1, f.p2) AND winner=2) AS p2winsvp1,
+                (SELECT count(1) FROM fights 
+                    WHERE (p1 = f.p1 AND p2 = f.p2 AND winner = 1)
+                    OR    (p2 = f.p1 AND p1 = f.p2 AND winner = 2)
+                ) AS p1winsvp2,
+                (SELECT count(1) FROM fights 
+                    WHERE (p1 = f.p2 AND p2 = f.p1 AND winner = 1) 
+                    OR    (p2 = f.p2 AND p1 = f.p1 AND winner = 2)
+                ) AS p2winsvp1,
                 CAST(p1.wins AS FLOAT) / CAST((p1.wins + p1.losses) AS FLOAT) AS p1winpct,
                 CAST(p2.wins AS FLOAT) / CAST((p2.wins + p2.losses) AS FLOAT) AS p2winpct,
                 f.winner - 1 AS winner

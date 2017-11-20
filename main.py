@@ -29,6 +29,7 @@ class SaltySession():
         self.balance = None
         self.tournament_balance = None
 
+        ##TODO: seperate tournament and non tournament for ai
         training_data = self.db.get_training_data()
         ai_schema = [key for key in training_data[0].keys() if key != 'winner']
         self.ai = saltyai.LogRegression(ai_schema)
@@ -82,9 +83,8 @@ class SaltySession():
     def make_bet(self):
         p1 = self.db.get_or_add_fighter(self.state['p1name'])
         p2 = self.db.get_or_add_fighter(self.state['p2name'])
-        past_fights = self.db.get_fights(p1['guid'], p2['guid'])
-        p1_wins = len([fight for fight in past_fights if fight['winner'] == p1['guid']])
-        p2_wins = len([fight for fight in past_fights if fight['winner'] == p2['guid']])
+        p1_wins = len(self.db.get_wins_against(p1['guid'], p2['guid']))
+        p2_wins = len(self.db.get_wins_against(p2['guid'], p1['guid']))
 
         ##TODO: think of a better solution to avoid / by 0
         p1_winpct = 0.5 if p1['wins'] + p1['losses'] == 0 else p1['wins'] / (p1['wins'] + p1['losses'])
