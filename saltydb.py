@@ -141,6 +141,10 @@ class SaltyDB():
         guids = ",".join([str(p1_guid), str(p2_guid)])
         result = self.conn.execute('SELECT * FROM fights WHERE p1 IN (?) and p2 in (?)', (guids, guids))
         return result.fetchall()
+
+    def get_fights(self, guid):
+        result = self.conn.execute('SELECT * FROM fights WHERE p1 = ? or p2 = ?', (guid, guid))
+        return result.fetchall()
     
     # get p1's wins against p2. includes where #s reversed
     def get_wins_against(self, p1_guid, p2_guid):

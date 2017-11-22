@@ -85,28 +85,34 @@ class SaltySession():
         p2 = self.db.get_or_add_fighter(self.state['p2name'])
         p1_wins = len(self.db.get_wins_against(p1['guid'], p2['guid']))
         p2_wins = len(self.db.get_wins_against(p2['guid'], p1['guid']))
+        p1_fights = len(self.db.get_fights(p1['guid']))
+        p2_fights = len(self.db.get_fights(p2['guid']))
 
         ##TODO: think of a better solution to avoid / by 0
         p1_winpct = 0.5 if p1['wins'] + p1['losses'] == 0 else p1['wins'] / (p1['wins'] + p1['losses'])
         p2_winpct = 0.5 if p2['wins'] + p2['losses'] == 0 else p2['wins'] / (p2['wins'] + p2['losses'])
         
-        log.info('P1({name}) elo: {elo}, wins vs p2: {wins}, win pct: {winpct}; '.format(
+        log.info('P1({name}) elo: {elo}, wins vs p2: {wins}, win pct: {winpct}, fights: {nFights}'.format(
             name = p1['name'],
             elo = p1['elo'],
             wins = p1_wins,
-            winpct = p1_winpct
+            winpct = p1_winpct * 100,
+            nFights = p1_fights
         ))
-        log.info('P2({name}) elo: {elo}, wins vs p1: {wins}, win pct: {winpct}'.format(
+        log.info('P2({name}) elo: {elo}, wins vs p1: {wins}, win pct: {winpct}, fights: {nFights}'.format(
             name = p2['name'],
             elo = p2['elo'],
             wins = p2_wins,
-            winpct = p2_winpct
+            winpct = p2_winpct * 100,
+            nFights = p2_fights
         ))
-        prediction = self.ai.p(
-            elo_diff = p1['elo'] - p2['elo'], 
-            wins_diff = p1_wins - p2_wins, 
-            win_pct_diff = p1_winpct - p2_winpct, 
-        )
+
+        p_coeffs = {
+            'elo_diff': p1['elo'] - p2['elo'], 
+            'wins_diff': p1_wins - p2_wins, 
+            'win_pct_diff': p1_winpct - p2_winpct
+        }
+        prediction = self.ai.p(p_coeffs)
         log.info('Prediction: %s' % prediction)
         if prediction > 0.5:
             bet_on = 2
@@ -147,8 +153,9 @@ class SaltySession():
 
                     # fight over, have winner
                     if self.state['status'] in ['1', '2']:
+                        ##TODO: should do something to prevent duplicate fights
                         self.db.add_fight(self.state['p1name'], self.state['p2name'], int(self.state['status']), self.mode)
-                        ##TODO: retrain with new fight results
+                        ##TODO: retrain with new fight results?
 
                     elif self.state['status'] == 'open':
                         self.update_balances()
