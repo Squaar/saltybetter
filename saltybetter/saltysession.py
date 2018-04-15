@@ -5,24 +5,34 @@ import logging
 import time
 import signal
 import sys
+import argparse
 
 # logging.basicConfig(filename='salty.log', format='%(asctime)s-%(name)s-%(levelname)s: %(message)s', level=logging.INFO)
 logging.basicConfig(format='%(asctime)s-%(name)s-%(levelname)s: %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
-_REFRESH_INTERVAL = 5 # seconds
-_USER = 'saltyface@gmail.com'
-_PASSWORD = 'saltyface'
-_MAX_BET = 1000
-_MIN_BET = _MAX_BET * .01
-_WIN_MULTIPLIER = _MAX_BET * 0.1
-_BALANCE_SOURCE = 'page' # 'page' or 'ajax'
+# _REFRESH_INTERVAL = 5 # seconds
+# _MAX_BET = 1000
+# _MIN_BET = _MAX_BET * .01
+# _BALANCE_SOURCE = 'page' # 'page' or 'ajax'
 
 class SaltySession():
 
     def __init__(self):
+        arg_parser = argparse.ArgumentParser()
+        arg_parser.add_argument('-db', '--database', default='salt.db', help='SQLite database file to use')
+        arg_parser.add_argument('-m', '--memory', action='store_true', help='Use in-memory database instead of a database file. This takes precedence over -db if it is set.')
+        arg_parser.add_argument('-r', '--refresh_interval', type=int, default=5, help='How often to poll for status & current state in seconds')
+        arg_parser.add_argument('--max_bet', default=1000, type=int, help='The maximum amount of saltybux saltybetter will bet')
+        arg_parser.add_argument('--min_bet', default=10, type=int, help='The minimum amount of saltybux saltybetter will bet')
+        arg_parser.add_argument('--balance_source', default='page', choices=['page', 'ajax'],
+                                help='Where saltybetter will look for the current wallet balance. Valid values are "page" and "ajax". Currently, only "page" works.')
+        arg_parser.add_argument('-u', '--username', help='Saltybet login username. Currently non-functional. You must spoof login!')
+        arg_parser.add_argument('-p', '--password', help='Saltybet login password. Currently non-functional. You must spoof login!')
+        self.args = arg_parser.parse_args()
+
         self.client = saltyclient.SaltyClient()
-        self.db = saltydb.SaltyDB('salt.db')
+        self.db = saltydb.SaltyDB(saltydb.MEMORY if self.args.memory else self.args.database)
         self.state = None
         self.mode = None
         self.balance = None
@@ -39,7 +49,7 @@ class SaltySession():
         old_balance = None
         if self.mode in ['normal', 'exhibition']:
             old_balance = self.balance
-            self.balance = self.client.get_wallet_balance()[_BALANCE_SOURCE]
+            self.balance = self.client.get_wallet_balance()[self.args.balance_source]
 
         # will always get tournament balance
         old_tournament_balance = self.tournament_balance
@@ -124,16 +134,16 @@ class SaltySession():
         amount = 10
 
         # sanity checks
-        if amount < _MIN_BET:
-            amount = _MIN_BET
-        elif amount > _MAX_BET:
-            amount = _MAX_BET
+        if amount < self.args.min_bet:
+            amount = self.args.min_bet
+        elif amount > self.args.max_bet:
+            amount = self.args.max_bet
         
         self.client.place_bet(bet_on, amount)
 
     ##TODO: cmd line args
     def start(self):
-        # self.client.login(_USER, _PASSWORD)
+        # self.client.login(self.args.username, self.args.password)
         self.client.spoof_login(
                 '__cfduid=d4ad05a1bdff57927e01f223ce5d3cc771503283048; PHPSESSID=h82q4bu5iaca55a90scr8962u6',
                 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.91 Safari/537.36'
@@ -172,7 +182,7 @@ class SaltySession():
 
             except Exception as e:
                 log.exception('UH OH! %s' % e)
-            time.sleep(_REFRESH_INTERVAL)
+            time.sleep(self.args.refresh_interval)
 
     def stop(self, signum=None, frame=None):
         self.db.end_session(self.balance)
