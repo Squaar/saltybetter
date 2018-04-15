@@ -256,7 +256,6 @@ class SaltyDB():
                 FROM fights f
                 JOIN fighters p1 ON p1.guid = f.p1
                 JOIN fighters p2 ON p2.guid = f.p2
-                limit 10
             )
         ''')
         data = result.fetchall()
