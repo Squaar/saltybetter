@@ -5,15 +5,15 @@ from bs4 import BeautifulSoup
 
 log = logging.getLogger(__name__)
 
-##TODO: make Fighter object
 
-class SaltyClient():
+# TODO: make Fighter object
 
+class SaltyClient:
     _LOGIN_URL = 'http://saltybet.com/authenticate?signin=1'
     _BET_URL = 'http://saltybet.com/ajax_place_bet.php'
     _HEADERS = {
-            'Connection': 'keep-alive',
-            'Host': 'www.saltybet.com',
+        'Connection': 'keep-alive',
+        'Host': 'www.saltybet.com',
     }
 
     def __init__(self):
@@ -31,14 +31,14 @@ class SaltyClient():
                 self.session.cookies.update({cookie[0]: cookie[1]})
             self.spoof_enabled = True
             log.info("Spoof'd cookie '%s'" % spoof_cookie)
-        except IndexError as e:
+        except IndexError:
             log.error('Invalid cookie format. Please use format "id0=foo; id1=bar"')
-    
+
     def login(self, email, password):
         payload = {
-            'email' : email,
-            'pword' : password,
-            'authenticate' : 'signin'
+            'email': email,
+            'pword': password,
+            'authenticate': 'signin'
         }
         self._clean_session()
         response = self.session.post(self._LOGIN_URL, data=payload)
@@ -67,7 +67,7 @@ class SaltyClient():
 
     def place_bet(self, player, amount):
         amount = int(amount)
-        if player not in [1,2]:
+        if player not in [1, 2]:
             raise RuntimeError('Player to bet on must be in [1, 2]: %s' % player)
         payload = {
             'selectedplayer': 'player%s' % player,

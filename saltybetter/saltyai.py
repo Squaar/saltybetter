@@ -5,17 +5,17 @@ import json
 
 log = logging.getLogger(__name__)
 
-##TODO: Make this an ABC
+
+# TODO: Make this an ABC
 class SaltyModel:
 
     def __init__(self):
-        self.bet = None # previous bet
+        self.bet = None  # previous bet
 
 
 class LogRegression(SaltyModel):
-
     _ALPHA = 0.2
-    
+
     def __init__(self, betas):
         super().__init__()
         self.betas = {}
@@ -32,7 +32,7 @@ class LogRegression(SaltyModel):
     def p(self, coefficients=None):
         if coefficients is None:
             coefficients = {}
-        coefficients['bias'] = Decimal(1) # Should always be 1
+        coefficients['bias'] = Decimal(1)  # Should always be 1
 
         linear = Decimal(0)
         for k in self.betas:
@@ -53,7 +53,7 @@ class LogRegression(SaltyModel):
 
                 for beta in self.betas:
                     if beta == 'bias':
-                        self.betas[beta] = self.recalc_beta(self.betas[beta], fight[y_key], prediction, 1) # bias always has coefficient 1
+                        self.betas[beta] = self.recalc_beta(self.betas[beta], fight[y_key], prediction, 1)  # bias always has coefficient 1
                     else:
                         self.betas[beta] = self.recalc_beta(self.betas[beta], fight[y_key], prediction, fight[beta])
 
@@ -65,7 +65,7 @@ class LogRegression(SaltyModel):
     # prediction: current probability of y=1
     # x: coefficient for beta val to update
     def recalc_beta(self, b, y, prediction, x):
-        recalc =  Decimal(b) + Decimal(self._ALPHA) * (Decimal(y) - Decimal(prediction)) * Decimal(x)
+        recalc = Decimal(b) + Decimal(self._ALPHA) * (Decimal(y) - Decimal(prediction)) * Decimal(x)
         return recalc
 
     def to_json(self):

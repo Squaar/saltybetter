@@ -5,13 +5,14 @@ log = logging.getLogger(__name__)
 
 MEMORY = ':memory:'
 
-class SaltyDB():
+
+class SaltyDB:
 
     def __init__(self, db=MEMORY, elo_stake=.05):
         self.elo_stake = elo_stake
         self.conn = sqlite3.connect(db)
         self.conn.row_factory = sqlite3.Row
-        ##TODO: add table to keep betas between sesisons
+        # TODO: add table to keep betas between sesisons
         self.conn.executescript('''
             CREATE TABLE IF NOT EXISTS fighters(
                 guid INTEGER PRIMARY KEY,
@@ -114,7 +115,7 @@ class SaltyDB():
         if p1name == p2name:
             log.warning('Self fight detected. Ignoring. %s' % p1name)
             return
-        
+
         p1 = self.get_or_add_fighter(p1name)
         p2 = self.get_or_add_fighter(p2name)
 
@@ -156,7 +157,7 @@ class SaltyDB():
         self.conn.commit()
         new_fighter = self.get_fighter(result.lastrowid)
         log.info('Fighter added %s' % list(new_fighter))
-        return new_fighter 
+        return new_fighter
 
     def get_or_add_fighter(self, name):
         fighter = self.get_fighter(name)
@@ -177,14 +178,14 @@ class SaltyDB():
     def get_fights(self, guid):
         result = self.conn.execute('SELECT * FROM fights WHERE p1 = ? or p2 = ?', (guid, guid))
         return result.fetchall()
-    
+
     # get p1's wins against p2. includes where #s reversed
     def get_wins_against(self, p1_guid, p2_guid):
         result = self.conn.execute('''
             SELECT * FROM fights 
             WHERE (p1 = ? AND p2 = ? AND winner = 1)
             OR    (p1 = ? AND p2 = ? AND winner = 2)
-        ''',(
+        ''', (
             p1_guid, p2_guid,
             p2_guid, p1_guid
         ))
@@ -215,7 +216,7 @@ class SaltyDB():
         open_sessions = result.fetchall()
         if len(open_sessions) > 0:
             raise OpenSessionError('A session is already open!', len(open_sessions))
-        
+
         result = self.conn.execute('INSERT INTO sessions (startBalance) VALUES (?)', (balance,))
         self.conn.commit()
 
@@ -229,7 +230,7 @@ class SaltyDB():
         if balance is None:
             raise TypeError('Balance cannot be None')
         result = self.conn.execute(
-            'UPDATE sessions SET endTS=(SELECT MAX(time) FROM fights), endBalance=? WHERE guid=(SELECT MAX(guid) FROM sessions) AND endTS IS NULL', 
+            'UPDATE sessions SET endTS=(SELECT MAX(time) FROM fights), endBalance=? WHERE guid=(SELECT MAX(guid) FROM sessions) AND endTS IS NULL',
             (balance,)
         )
         if result.rowcount > 1:
@@ -243,7 +244,7 @@ class SaltyDB():
     def get_training_data(self):
         log.info('Generating training data, this may take a few moments...')
         # winner - 1 to put in range 0,1. p() will predict probability of p2 winning
-        result = self.conn.execute ('''
+        result = self.conn.execute('''
             SELECT p1elo - p2elo AS elo_diff,
             p1winsvp2 - p2winsvp1 AS wins_diff,
             p1winpct - p2winpct AS win_pct_diff,
@@ -264,11 +265,13 @@ class SaltyDB():
                 FROM fights f
                 JOIN fighters p1 ON p1.guid = f.p1
                 JOIN fighters p2 ON p2.guid = f.p2
+                limit 10
             )
         ''')
         data = result.fetchall()
         log.info('Training data generated: %s' % len(data))
         return data
+
 
 class OpenSessionError(RuntimeError):
     def __init__(self, message, open_sessions):
