@@ -25,7 +25,7 @@ class SaltyControllerTest(unittest.TestCase):
         # p1 more wins, p1 higher elo
         self.controller.db.get_or_add_fighter.side_effect = [{'name': 'a', 'elo': 1, 'guid': 1}, {'name': 'b', 'elo': 0, 'guid': 2}]
         self.controller.db.get_fights.return_value = [{'winner': 1}]
-        self.controller.make_bet()
+        self.controller.make_bets()
         bet_on = self.controller.client.place_bet.call_args[0][0]
         bet_amount = self.controller.client.place_bet.call_args[0][1]
         assert bet_on == 1
@@ -34,7 +34,7 @@ class SaltyControllerTest(unittest.TestCase):
         # p2 more wins, p2 higher elo
         self.controller.db.get_or_add_fighter.side_effect = [{'name': 'a', 'elo': 0, 'guid': 1}, {'name': 'b', 'elo': 1, 'guid': 2}]
         self.controller.db.get_fights.return_value = [{'winner': 2}]
-        self.controller.make_bet()
+        self.controller.make_bets()
         bet_on = self.controller.client.place_bet.call_args[0][0]
         bet_amount = self.controller.client.place_bet.call_args[0][1]
         assert bet_on == 2
@@ -43,7 +43,7 @@ class SaltyControllerTest(unittest.TestCase):
         # p1 more wins, p2 higher elo
         self.controller.db.get_or_add_fighter.side_effect = [{'name': 'a', 'elo': 0, 'guid': 1}, {'name': 'b', 'elo': 1, 'guid': 2}]
         self.controller.db.get_fights.return_value = [{'winner': 1}]
-        self.controller.make_bet()
+        self.controller.make_bets()
         bet_on = self.controller.client.place_bet.call_args[0][0]
         bet_amount = self.controller.client.place_bet.call_args[0][1]
         assert bet_on == 1
@@ -52,7 +52,7 @@ class SaltyControllerTest(unittest.TestCase):
         # p2 more wins, p1 higher elo
         self.controller.db.get_or_add_fighter.side_effect = [{'name': 'a', 'elo': 1, 'guid': 1}, {'name': 'b', 'elo': 0, 'guid': 2}]
         self.controller.db.get_fights.return_value = [{'winner': 2}]
-        self.controller.make_bet()
+        self.controller.make_bets()
         bet_on = self.controller.client.place_bet.call_args[0][0]
         bet_amount = self.controller.client.place_bet.call_args[0][1]
         assert bet_on == 2
@@ -61,7 +61,7 @@ class SaltyControllerTest(unittest.TestCase):
         # equal wins, p1 higher elo
         self.controller.db.get_or_add_fighter.side_effect = [{'name': 'a', 'elo': 1, 'guid': 1}, {'name': 'b', 'elo': 0, 'guid': 2}]
         self.controller.db.get_fights.return_value = []
-        self.controller.make_bet()
+        self.controller.make_bets()
         bet_on = self.controller.client.place_bet.call_args[0][0]
         bet_amount = self.controller.client.place_bet.call_args[0][1]
         assert bet_on == 1
@@ -70,7 +70,7 @@ class SaltyControllerTest(unittest.TestCase):
         # equal wins, p2 higher elo
         self.controller.db.get_or_add_fighter.side_effect = [{'name': 'a', 'elo': 0, 'guid': 1}, {'name': 'b', 'elo': 1, 'guid': 2}]
         self.controller.db.get_fights.return_value = []
-        self.controller.make_bet()
+        self.controller.make_bets()
         bet_on = self.controller.client.place_bet.call_args[0][0]
         bet_amount = self.controller.client.place_bet.call_args[0][1]
         assert bet_on == 2
@@ -79,7 +79,7 @@ class SaltyControllerTest(unittest.TestCase):
         # p1 more wins, equal elo
         self.controller.db.get_or_add_fighter.side_effect = [{'name': 'a', 'elo': 0, 'guid': 1}, {'name': 'b', 'elo': 0, 'guid': 2}]
         self.controller.db.get_fights.return_value = [{'winner': 1}]
-        self.controller.make_bet()
+        self.controller.make_bets()
         bet_on = self.controller.client.place_bet.call_args[0][0]
         bet_amount = self.controller.client.place_bet.call_args[0][1]
         assert bet_on == 1
@@ -88,7 +88,7 @@ class SaltyControllerTest(unittest.TestCase):
         # p2 more wins, equal elo
         self.controller.db.get_or_add_fighter.side_effect = [{'name': 'a', 'elo': 0, 'guid': 1}, {'name': 'b', 'elo': 0, 'guid': 2}]
         self.controller.db.get_fights.return_value = [{'winner': 2}]
-        self.controller.make_bet()
+        self.controller.make_bets()
         bet_on = self.controller.client.place_bet.call_args[0][0]
         bet_amount = self.controller.client.place_bet.call_args[0][1]
         assert bet_on == 2

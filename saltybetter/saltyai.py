@@ -5,11 +5,19 @@ import json
 
 log = logging.getLogger(__name__)
 
-class LogRegression:
+##TODO: Make this an ABC
+class SaltyModel:
+
+    def __init__(self):
+        self.bet = None # previous bet
+
+
+class LogRegression(SaltyModel):
 
     _ALPHA = 0.2
     
     def __init__(self, betas):
+        super().__init__()
         self.betas = {}
         for beta in betas:
             if type(betas) == dict:
@@ -67,6 +75,6 @@ class LogRegression:
     @classmethod
     def from_json(cls, json_obj):
         betas = {}
-        for k, v in json.loads(json_obj):
+        for k, v in json.loads(json_obj).items():
             betas[k] = Decimal(v)
         return cls(betas)

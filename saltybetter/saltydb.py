@@ -106,6 +106,10 @@ class SaltyDB():
         log.info('Saved LogReg model: %s' % list(new_model))
         return new_model
 
+    def get_best_logreg_model(self, min_bets=0):
+        result = self.conn.execute('SELECT * FROM v_ai_logreg_models WHERE wonBets + lostBets >= ? ORDER BY wonBetsPct DESC LIMIT 1', (min_bets,))
+        return result.fetchone()
+
     def add_fight(self, p1name, p2name, winner, mode):
         if p1name == p2name:
             log.warning('Self fight detected. Ignoring. %s' % p1name)
@@ -130,15 +134,19 @@ class SaltyDB():
         log.info('Fight recorded %s' % new_fight)
         return new_fight[0]
 
-    def increment_won_bets(self, session_guid, model_guid):
-        if session_guid:
-            result = self.conn.execute('UPDATE sessions SET wonBets = wonBets + 1 WHERE guid = ?', (session_guid,))
+    def increment_session_wins(self, session_guid):
+        result = self.conn.execute('UPDATE sessions SET wonBets = wonBets + 1 WHERE guid = ?', (session_guid,))
+        self.conn.commit()
+
+    def increment_model_wins(self, model_guid):
         result = self.conn.execute('UPDATE ai_logreg_models SET wonBets = wonBets + 1 WHERE guid = ?', (model_guid,))
         self.conn.commit()
 
-    def increment_lost_bets(self, session_guid, model_guid):
-        if session_guid:
-            result = self.conn.execute('UPDATE sessions SET lostBets = lostBets + 1 WHERE guid = ?', (session_guid,))
+    def increment_session_losses(self, session_guid):
+        result = self.conn.execute('UPDATE sessions SET lostBets = lostBets + 1 WHERE guid = ?', (session_guid,))
+        self.conn.commit()
+
+    def increment_model_losses(self, model_guid):
         result = self.conn.execute('UPDATE ai_logreg_models SET lostBets = lostBets + 1 WHERE guid = ?', (model_guid,))
         self.conn.commit()
 
