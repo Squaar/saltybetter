@@ -29,8 +29,10 @@ class LogRegression(SaltyModel):
 
     # estimate probability of p2 winning
     # keys in coefficients take precedence over kwargs
-    def p(self, coefficients={}):
-        coefficients['bias'] = Decimal(1)
+    def p(self, coefficients=None):
+        if coefficients is None:
+            coefficients = {}
+        coefficients['bias'] = Decimal(1) # Should always be 1
 
         linear = Decimal(0)
         for k in self.betas:

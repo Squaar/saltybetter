@@ -11,6 +11,8 @@ import argparse
 logging.basicConfig(format='%(asctime)s-%(name)s-%(levelname)s: %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
+##TODO: Try Tensorflow/Keras
+
 
 class SaltySession():
 
@@ -36,6 +38,7 @@ class SaltySession():
         self.session_id = None
         self.models = {}
 
+        ##TODO: Train in a thread
         training_data = self.db.get_training_data()
         ai_schema = [key for key in training_data[0].keys() if key != 'winner']
         trained_model = saltyai.LogRegression(ai_schema)
