@@ -1,7 +1,6 @@
-#!/home/squaar/brogramming/python/saltybetter/.env/bin/python3
-import saltyclient
-import saltydb
-import saltyai
+from . import saltyclient
+from . import saltydb
+from . import saltyai
 import logging
 import time
 import signal
