@@ -4,7 +4,7 @@ setup(
     name='saltybetter',
     version='0.1',
     packages=['saltybetter'],
-    package_dir={'': 'saltybetter'},
+    # package_dir={'': 'saltybetter'},
     url='https://github.com/Squaar/saltybetter/',
     license='MIT',
     author='Matt Dumford',
