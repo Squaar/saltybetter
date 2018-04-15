@@ -79,12 +79,32 @@ class SaltyDB():
                 FOREIGN KEY(fight) REFERENCES fights(guid),
                 FOREIGN KEY(session) REFERENCES sessions(guid)
             );
+
+            CREATE TABLE IF NOT EXISTS ai_logreg_models(
+                guid INTEGER PRIMARY KEY,
+                betas TEXT NOT NULL,
+                wonBets INT NOT NULL DEFAULT 0,
+                lostBets INT NOT NULL DEFAULT 0
+            );
+
+            DROP VIEW IF EXISTS v_ai_logreg_models;
+            CREATE VIEW IF NOT EXISTS v_ai_logreg_models AS
+            SELECT guid,
+                betas,
+                wonBets,
+                lostBets,
+                CAST(wonBets AS REAL) / CAST((wonBets + lostBets) AS REAL) * 100 AS wonBetsPct
+            FROM ai_logreg_models;
         ''')
         self.conn.commit()
-    
-    '''
 
-    '''
+    def add_ai_logreg_model(self, serialized):
+        result = self.conn.execute('INSERT INTO ai_logreg_models (betas) VALUES(?)', (serialized,))
+        self.conn.commit()
+        result = self.conn.execute('SELECT * FROM ai_logreg_models WHERE ROWID=?', (result.lastrowid,))
+        new_model = result.fetchone()
+        log.info('Saved LogReg model: %s' % list(new_model))
+        return new_model
 
     def add_fight(self, p1name, p2name, winner, mode):
         if p1name == p2name:
@@ -106,16 +126,20 @@ class SaltyDB():
         result = self.conn.execute('INSERT INTO fights (p1, p2, winner, mode) VALUES (?, ?, ?, ?)', (p1['guid'], p2['guid'], winner, mode))
         self.conn.commit()
         result = self.conn.execute('SELECT * FROM fights WHERE ROWID=?', (result.lastrowid,))
-        new_fight = result.fetchone()
-        log.info('Fight recorded %s' % list(new_fight))
-        return new_fight
+        new_fight = list(result.fetchone())
+        log.info('Fight recorded %s' % new_fight)
+        return new_fight[0]
 
-    def increment_won_bets(self):
-        result = self.conn.execute('UPDATE sessions SET wonBets = wonBets + 1 WHERE guid = (SELECT MAX(guid) FROM sessions)')
+    def increment_won_bets(self, session_guid, model_guid):
+        if session_guid:
+            result = self.conn.execute('UPDATE sessions SET wonBets = wonBets + 1 WHERE guid = ?', (session_guid,))
+        result = self.conn.execute('UPDATE ai_logreg_models SET wonBets = wonBets + 1 WHERE guid = ?', (model_guid,))
         self.conn.commit()
 
-    def increment_lost_bets(self):
-        result = self.conn.execute('UPDATE sessions SET lostBets = lostBets + 1 WHERE guid = (SELECT MAX(guid) FROM sessions)')
+    def increment_lost_bets(self, session_guid, model_guid):
+        if session_guid:
+            result = self.conn.execute('UPDATE sessions SET lostBets = lostBets + 1 WHERE guid = ?', (session_guid,))
+        result = self.conn.execute('UPDATE ai_logreg_models SET lostBets = lostBets + 1 WHERE guid = ?', (model_guid,))
         self.conn.commit()
 
     # returns newly created fighter
@@ -190,6 +214,7 @@ class SaltyDB():
         result = self.conn.execute('SELECT * FROM sessions WHERE guid=(SELECT MAX(guid) FROM sessions)')
         new_session = result.fetchone()
         log.info('Session started: %s' % list(new_session))
+        return new_session
 
     # does nothing if there are no open sessions, ends only the most recent session
     def end_session(self, balance):
@@ -231,6 +256,7 @@ class SaltyDB():
                 FROM fights f
                 JOIN fighters p1 ON p1.guid = f.p1
                 JOIN fighters p2 ON p2.guid = f.p2
+                limit 10
             )
         ''')
         data = result.fetchall()

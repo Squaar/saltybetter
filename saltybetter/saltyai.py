@@ -1,8 +1,7 @@
-from math import exp
 from random import shuffle
-from pprint import pformat
 from decimal import Decimal
 import logging
+import json
 
 log = logging.getLogger(__name__)
 
@@ -58,3 +57,16 @@ class LogRegression:
     def recalc_beta(self, b, y, prediction, x):
         recalc =  Decimal(b) + Decimal(self._ALPHA) * (Decimal(y) - Decimal(prediction)) * Decimal(x)
         return recalc
+
+    def to_json(self):
+        betas = {}
+        for k, v in self.betas.items():
+            betas[k] = str(v)
+        return json.dumps(betas)
+
+    @classmethod
+    def from_json(cls, json_obj):
+        betas = {}
+        for k, v in json.loads(json_obj):
+            betas[k] = Decimal(v)
+        return cls(betas)

@@ -37,12 +37,14 @@ class SaltySession():
         self.mode = None
         self.balance = None
         self.tournament_balance = None
+        self.session_id = None
 
-        ##TODO: seperate tournament and non tournament for ai
         training_data = self.db.get_training_data()
         ai_schema = [key for key in training_data[0].keys() if key != 'winner']
         self.ai = saltyai.LogRegression(ai_schema)
         self.ai.train(training_data, 'winner')
+        self.model_id = self.db.add_ai_logreg_model(self.ai.to_json())['guid']
+
 
     def update_balances(self):
         # gets tournament balance when in tournament mode
@@ -59,23 +61,23 @@ class SaltySession():
             log.info('Lost bet! Old balance: %s, New balance: %s, Profit: %s' % (
                 old_balance, self.balance, self.balance - old_balance
             ))
-            self.db.increment_lost_bets()
+            self.db.increment_lost_bets(self.session_id, self.model_id)
         elif old_balance is not None and self.balance > old_balance:
             log.info('Won bet!  Old balance: %s, New balance: %s, Profit: %s' % (
                 old_balance, self.balance, self.balance - old_balance
             ))
-            self.db.increment_won_bets()
+            self.db.increment_won_bets(self.session_id, self.model_id)
 
         if old_tournament_balance is not None and self.tournament_balance < old_tournament_balance:
             log.info('Lost tournament bet! Old balance: %s, New balance: %s, Profit: %s' % (
                 old_tournament_balance, self.tournament_balance, self.tournament_balance - old_tournament_balance
             ))
-            self.db.increment_lost_bets()
+            self.db.increment_lost_bets(self.session_id, self.model_id)
         elif old_tournament_balance is not None and self.tournament_balance > old_tournament_balance:
             log.info('Won tournament bet!  Old balance: %s, New balance: %s, Profit: %s' % (
                 old_tournament_balance, self.tournament_balance, self.tournament_balance - old_tournament_balance
             ))
-            self.db.increment_won_bets()
+            self.db.increment_won_bets(self.session_id, self.model_id)
 
     def update_state(self):
         self.state = self.client.get_state()
@@ -170,11 +172,11 @@ class SaltySession():
                         self.update_balances()
                         if not session_started and self.mode in ['normal', 'exhibition']:
                             try:
-                                self.db.start_session(self.balance)
+                                self.session_id = self.db.start_session(self.balance)['guid']
                                 session_started = True
                             except saltydb.OpenSessionError as e:
                                 self.db.end_session(self.balance)
-                                self.db.start_session(self.balance)
+                                self.session_id = self.db.start_session(self.balance)['guid']
                                 session_started = True
 
                         log.info('Wallet: %s, Tournament Balance: %s' % (self.balance, self.tournament_balance))
