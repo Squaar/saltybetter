@@ -7,13 +7,17 @@ log = logging.getLogger(__name__)
 
 
 # TODO: Make this an ABC
-class SaltyModel:
+class SaltyPredictor:
 
     def __init__(self):
         self.bet = None  # previous bet
 
+    def p(self, coefficients):
+        if type(coefficients) != dict:
+            raise TypeError('Prediction coefficients should be a dict')
 
-class LogRegression(SaltyModel):
+
+class LogRegression(SaltyPredictor):
     _ALPHA = 0.2
 
     def __init__(self, betas):
@@ -28,10 +32,8 @@ class LogRegression(SaltyModel):
             self.betas['bias'] = Decimal(0.0)
 
     # estimate probability of p2 winning
-    # keys in coefficients take precedence over kwargs
-    def p(self, coefficients=None):
-        if coefficients is None:
-            coefficients = {}
+    def p(self, coefficients):
+        super().p(coefficients)
         coefficients['bias'] = Decimal(1)  # Should always be 1
 
         linear = Decimal(0)
