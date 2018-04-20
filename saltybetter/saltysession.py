@@ -1,5 +1,6 @@
 from . import saltyclient
-from . import saltydb
+from db import saltydb_lite
+from db import saltydb
 from . import saltyai
 import logging
 import time
@@ -31,7 +32,7 @@ class SaltySession:
         self.args = arg_parser.parse_args()
 
         self.client = saltyclient.SaltyClient()
-        self.db = saltydb.SaltyDB(saltydb.MEMORY if self.args.memory else self.args.database)
+        self.db = saltydb_lite.SaltyDBLite(saltydb_lite.MEMORY if self.args.memory else self.args.database)
         self.state = None
         self.mode = None
         self.balance = None

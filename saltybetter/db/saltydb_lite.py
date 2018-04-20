@@ -1,12 +1,15 @@
+from .saltydb import OpenSessionError, SaltyDB
 import sqlite3
 import logging
 
 log = logging.getLogger(__name__)
+log.warning('SaltyDBLite will be obsolete soon in favor of SaltyDB')
 
 MEMORY = ':memory:'
 
+# TODO: move to a better DBMS, can't multithread sqlite
 
-class SaltyDB:
+class SaltyDBLite(SaltyDB):
 
     def __init__(self, db=MEMORY, elo_stake=.05):
         self.elo_stake = elo_stake
@@ -64,6 +67,7 @@ class SaltyDB:
                 DATETIME(endTS, 'localtime') AS endTS,
                 startBalance,
                 endBalance,
+                endBalance - startBalance AS profit,
                 wonBets, 
                 lostBets,
                 CAST(wonBets AS REAL) / CAST((wonBets + lostBets) AS REAL) * 100 AS wonBetsPct
@@ -265,6 +269,7 @@ class SaltyDB:
                 FROM fights f
                 JOIN fighters p1 ON p1.guid = f.p1
                 JOIN fighters p2 ON p2.guid = f.p2
+                limit 10
             )
         ''')
         data = result.fetchall()
@@ -272,8 +277,4 @@ class SaltyDB:
         return data
 
 
-class OpenSessionError(RuntimeError):
-    def __init__(self, message, open_sessions):
-        super().__init__(message, open_sessions)
-        self.message = message
-        self.open_sessions = open_sessions
+
