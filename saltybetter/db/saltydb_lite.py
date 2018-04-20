@@ -245,7 +245,7 @@ class SaltyDBLite(SaltyDB):
         closed_session = result.fetchone()
         log.info('Session ended: %s' % list(closed_session))
 
-    def get_training_data(self):
+    def get_training_data(self, test_mode=False):
         log.info('Generating training data, this may take a few moments...')
         # winner - 1 to put in range 0,1. p() will predict probability of p2 winning
         result = self.conn.execute('''
@@ -269,8 +269,9 @@ class SaltyDBLite(SaltyDB):
                 FROM fights f
                 JOIN fighters p1 ON p1.guid = f.p1
                 JOIN fighters p2 ON p2.guid = f.p2
+                {test_limit}
             )
-        ''')
+        '''.format(test_limit='LIMIT 100' if test_mode else ''))
         data = result.fetchall()
         log.info('Training data generated: %s' % len(data))
         return data

@@ -29,6 +29,7 @@ class SaltySession:
                                 help='Where saltybetter will look for the current wallet balance. Valid values are "page" and "ajax". Currently, only "page" works.')
         arg_parser.add_argument('-u', '--username', help='Saltybet login username. Currently non-functional. You must spoof login!')
         arg_parser.add_argument('-p', '--password', help='Saltybet login password. Currently non-functional. You must spoof login!')
+        arg_parser.add_argument('-t', '--test', action='store_true', help='Test mode. Puts a limiter on the training data query so it doesn\'t take forever')
         self.args = arg_parser.parse_args()
 
         self.client = saltyclient.SaltyClient()
@@ -41,7 +42,7 @@ class SaltySession:
         self.models = {}
 
         # TODO: Train in a thread
-        training_data = self.db.get_training_data()
+        training_data = self.db.get_training_data(test_mode=self.args.test)
         ai_schema = [key for key in training_data[0].keys() if key != 'winner']
         trained_model = saltyai.LogRegression(ai_schema)
         trained_model.train(training_data, 'winner')
