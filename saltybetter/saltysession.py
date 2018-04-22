@@ -1,6 +1,6 @@
 from . import saltyclient
-from db import saltydb_lite
-from db import saltydb
+from .db import saltydb_lite
+from .db import saltydb
 from . import saltyai
 import logging
 import time
@@ -42,7 +42,7 @@ class SaltySession:
         self.models = {}
 
         # TODO: Train in a thread
-        training_data = self.db.get_training_data(test_mode=self.args.test)
+        training_data = self.db.get_training_data(test_mode=self.args.test, test_limit=1000)
         ai_schema = [key for key in training_data[0].keys() if key != 'winner']
         trained_model = saltyai.LogRegression(ai_schema)
         trained_model.train(training_data, 'winner')
@@ -52,9 +52,12 @@ class SaltySession:
         bet_model_row = self.db.get_best_logreg_model(min_bets=400)
         if bet_model_row is None:
             bet_model_row = self.db.get_best_logreg_model(min_bets=0)
-        bet_model = saltyai.LogRegression.from_json(bet_model_row['betas'])
-        self.bet_model_id = bet_model_row['guid']
-        self.models[self.bet_model_id] = bet_model
+        if bet_model_row['guid'] == trained_model_id:
+            self.bet_model_id = trained_model_id
+        else:
+            bet_model = saltyai.LogRegression.from_json(bet_model_row['betas'])
+            self.bet_model_id = bet_model_row['guid']
+            self.models[self.bet_model_id] = bet_model
         log.info('Using best model: %s' % list(bet_model_row))
 
     def update_balances(self):
@@ -118,8 +121,8 @@ class SaltySession:
         p1_fights = len(self.db.get_fights(p1['guid']))
         p2_fights = len(self.db.get_fights(p2['guid']))
         # TODO: think of a better solution to avoid / by 0?
-        p1_winpct = 0.5 if p1['wins'] + p1['losses'] == 0 else p1['wins'] / (p1['wins'] + p1['losses'])
-        p2_winpct = 0.5 if p2['wins'] + p2['losses'] == 0 else p2['wins'] / (p2['wins'] + p2['losses'])
+        p1_winpct = 50.0 if p1['wins'] + p1['losses'] == 0 else p1['wins'] / (p1['wins'] + p1['losses']) * 100
+        p2_winpct = 50.0 if p2['wins'] + p2['losses'] == 0 else p2['wins'] / (p2['wins'] + p2['losses']) * 100
         p_coeffs = {
             'elo_diff': p1['elo'] - p2['elo'],
             'wins_diff': p1_wins - p2_wins,
@@ -170,8 +173,8 @@ class SaltySession:
     def start(self):
         # self.client.login(self.args.username, self.args.password)
         self.client.spoof_login(
-            '__cfduid=d4ad05a1bdff57927e01f223ce5d3cc771503283048; PHPSESSID=h82q4bu5iaca55a90scr8962u6',
-            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.91 Safari/537.36'
+            '__cfduid=dd23d875eb54af698be6f623da2345ef91523785275; PHPSESSID=a3jv4c318aa5tpkagcj6mi3833',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.117 Safari/537.36'
         )
 
         session_started = False

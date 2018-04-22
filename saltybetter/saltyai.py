@@ -43,6 +43,7 @@ class LogRegression(SaltyPredictor):
         logified = Decimal(1) / (Decimal(1) + (linear * Decimal(-1)).exp())
         return logified
 
+    # TODO: make this better... if new correct pct is worse, ignore?
     def train(self, training_data, y_key, epochs=10):
         log.info('Betas: ' + str(self.betas))
         for i in range(epochs):

@@ -163,27 +163,29 @@ class SaltyDBLite(SaltyDB):
         log.info('Fighter added %s' % list(new_fighter))
         return new_fighter
 
-    def get_or_add_fighter(self, name):
-        fighter = self.get_fighter(name)
-        if not fighter:
-            fighter = self.add_fighter(name)
-        return fighter
+    # inherit
+    # def get_or_add_fighter(self, name):
+    #     fighter = self.get_fighter(name)
+    #     if not fighter:
+    #         fighter = self.add_fighter(name)
+    #     return fighter
 
     # fighter can be name or guid
     def get_fighter(self, fighter):
         result = self.conn.execute('SELECT * FROM fighters WHERE guid = ? or name = ?', (fighter, fighter))
         return result.fetchone()
 
-    def get_fights(self, p1_guid, p2_guid):
-        guids = ",".join([str(p1_guid), str(p2_guid)])
-        result = self.conn.execute('SELECT * FROM fights WHERE p1 IN (?) and p2 in (?)', (guids, guids))
-        return result.fetchall()
+    # def get_fights(self, p1_guid, p2_guid):
+    #     guids = ",".join([str(p1_guid), str(p2_guid)])
+    #     result = self.conn.execute('SELECT * FROM fights WHERE p1 IN (?) and p2 in (?)', (guids, guids))
+    #     return result.fetchall()
 
     def get_fights(self, guid):
         result = self.conn.execute('SELECT * FROM fights WHERE p1 = ? or p2 = ?', (guid, guid))
         return result.fetchall()
 
     # get p1's wins against p2. includes where #s reversed
+    # TODO: refactor to just return the number instead of full list (get_n_wins_against)
     def get_wins_against(self, p1_guid, p2_guid):
         result = self.conn.execute('''
             SELECT * FROM fights 
@@ -245,8 +247,8 @@ class SaltyDBLite(SaltyDB):
         closed_session = result.fetchone()
         log.info('Session ended: %s' % list(closed_session))
 
-    def get_training_data(self, test_mode=False):
-        log.info('Generating training data, this may take a few moments...')
+    def get_training_data(self, test_mode=False, test_limit=100):
+        log.info('Generating training data, this may take a while...')
         # winner - 1 to put in range 0,1. p() will predict probability of p2 winning
         result = self.conn.execute('''
             SELECT p1elo - p2elo AS elo_diff,
@@ -263,15 +265,15 @@ class SaltyDBLite(SaltyDB):
                     WHERE (p1 = f.p2 AND p2 = f.p1 AND winner = 1) 
                     OR    (p2 = f.p2 AND p1 = f.p1 AND winner = 2)
                 ) AS p2winsvp1,
-                CAST(p1.wins AS FLOAT) / CAST((p1.wins + p1.losses) AS FLOAT) AS p1winpct,
-                CAST(p2.wins AS FLOAT) / CAST((p2.wins + p2.losses) AS FLOAT) AS p2winpct,
+                CAST(p1.wins AS FLOAT) / CAST((p1.wins + p1.losses) AS FLOAT) * 100 AS p1winpct,
+                CAST(p2.wins AS FLOAT) / CAST((p2.wins + p2.losses) AS FLOAT) * 100 AS p2winpct,
                 f.winner - 1 AS winner
                 FROM fights f
                 JOIN fighters p1 ON p1.guid = f.p1
                 JOIN fighters p2 ON p2.guid = f.p2
                 {test_limit}
             )
-        '''.format(test_limit='LIMIT 100' if test_mode else ''))
+        '''.format(test_limit='LIMIT %s' % test_limit if test_mode else ''))
         data = result.fetchall()
         log.info('Training data generated: %s' % len(data))
         return data
