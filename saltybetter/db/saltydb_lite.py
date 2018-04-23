@@ -39,7 +39,7 @@ class SaltyDBLite(SaltyDB):
                 p2 INT NOT NULL,
                 winner INT NOT NULL,
                 time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                mode TEXT NOT NULL,
+                mode TEXT,
                 FOREIGN KEY(p1) REFERENCES fighters(guid),
                 FOREIGN KEY(p2) REFERENCES fighters(guid)
             );

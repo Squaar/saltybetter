@@ -19,7 +19,8 @@ Base = declarative_base()
 
 class SaltyDB:
 
-    def __init__(self, conn_str, echo=False):
+    def __init__(self, conn_str, elo_stake=0.05, echo=False):
+        self.elo_stake = elo_stake
         self.engine = create_engine(conn_str, echo=echo)
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
@@ -32,11 +33,10 @@ class SaltyDB:
         log.info('Saved LogReg model: %s' % new_model)
         return new_model  # this might have issues with threads
 
-
     def get_best_logreg_model(self, min_bets=0):
         q = self.session.query(AILogregModel)
         q = q.filter(AILogregModel.wonBets + AILogregModel.lostBets >= min_bets)
-        q = q.order_by(desc(cast(AILogregModel.wonBets, Float) / cast(AILogregModel.wonBets + AILogregModel.lostBets, Float) * 100.0))
+        q = q.order_by(desc(AILogregModel.wonBetsPct))
         return q.first()
 
     def add_fight(self, p1name, p2name, winner, mode):
@@ -92,15 +92,19 @@ class SaltyDB:
         return new_fighter
 
     def get_or_add_fighter(self, name):
-        fighter = self.get_fighter(name)
+        fighter = self.get_fighter_by_name(name)
         if not fighter:
             fighter = self.add_fighter(name)
         return fighter
 
     # fighter can be name or guid
-    # TODO: refactor to split this out to seperate methods
-    def get_fighter(self, fighter):
-        fighter = self.session.query(Fighter).filter(or_(Fighter.guid==fighter, Fighter.name==fighter)).first()
+
+    def get_fighter_by_guid(self, guid):
+        fighter = self.session.query(Fighter).filter(Fighter.guid==guid).first()
+        return fighter
+
+    def get_fighter_by_name(self, name):
+        fighter = self.session.query(Fighter).filter(Fighter.name==name).first()
         return fighter
 
     # def get_fights(self, p1_guid, p2_guid):
@@ -122,14 +126,16 @@ class SaltyDB:
         return wins
 
     def increment_wins(self, fighter_guid, enemy_elo):
-        fighter = self.get_fighter(fighter_guid)
+        fighter = self.get_fighter_by_guid(fighter_guid)
         fighter.wins += 1
+        fighter.elo = fighter.elo + (self.elo_stake * enemy_elo)
         self.session.commit()
         log.info('Incremented wins: %s' % fighter)
 
     def increment_losses(self, fighter_guid):
-        fighter = self.get_fighter(fighter_guid)
+        fighter = self.get_fighter_by_guid(fighter_guid)
         fighter.losses += 1
+        fighter.elo = fighter.elo - (self.elo_stake * fighter.elo)
         self.session.commit()
         log.info('Incremented losses: %s' % fighter)
 
@@ -226,7 +232,7 @@ class Fighter(Base):
     @winpct.expression
     def winpct(cls):
         return case(
-            [cls.wins + cls.losses == 0, 50.0],
+            [(cls.wins + cls.losses == 0, 50.0)],
             else_ = cast(cls.wins, Float) / (cls.wins + cls.losses) * 100
         )
 
@@ -239,7 +245,7 @@ class Fight(Base):
     p2 =        Column(Integer, ForeignKey('fighters.guid'), nullable=False)
     winner =    Column(Integer, nullable=False)
     time =      Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
-    mode =      Column(String, nullable=False)
+    mode =      Column(String)
 
     def __repr__(self):
         return '<Fight ({guid}): {time} - {p1} vs. {p2}>'.format(
@@ -300,8 +306,9 @@ class AILogregModel(Base):
     lostBets =  Column(Integer, nullable=False, default=0)
 
     def __repr__(self):
-        return '<AILogregModel ({guid}): {winpct}%>'.format(
+        return '<AILogregModel ({guid}): {nfights} - {winpct}%>'.format(
             guid =      self.guid,
+            nfights =   self.wonBets + self.lostBets,
             winpct =    None if self.wonBets + self.lostBets == 0 else self.wonBets / (self.wonBets + self.lostBets) * 100
         )
 
@@ -315,8 +322,8 @@ class AILogregModel(Base):
     @wonBetsPct.expression
     def wonBetsPct(cls):
         return case(
-            [cls.wonBets + cls.lostBets == 0, 0.0],
-            else_ = cls.wonBets
+            [(cls.wonBets + cls.lostBets == 0, 0.0)],
+            else_ = cast(cls.wonBets, Float) / (cls.wonBets + cls.lostBets) * 100.0
         )
 
 

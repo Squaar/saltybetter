@@ -30,10 +30,12 @@ class SaltySession:
         arg_parser.add_argument('-u', '--username', help='Saltybet login username. Currently non-functional. You must spoof login!')
         arg_parser.add_argument('-p', '--password', help='Saltybet login password. Currently non-functional. You must spoof login!')
         arg_parser.add_argument('-t', '--test', action='store_true', help='Test mode. Puts a limiter on the training data query so it doesn\'t take forever')
+        arg_parser.add_argument('-e', '--echo', action='store_true', help='Echo DB queries to std.out')
         self.args = arg_parser.parse_args()
 
         self.client = saltyclient.SaltyClient()
-        self.db = saltydb_lite.SaltyDBLite(saltydb_lite.MEMORY if self.args.memory else self.args.database)
+        # self.db = saltydb_lite.SaltyDBLite(saltydb_lite.MEMORY if self.args.memory else self.args.database)
+        self.db = saltydb.SaltyDB(self.args.database, echo=self.args.echo)
         self.state = None
         self.mode = None
         self.balance = None
@@ -46,19 +48,19 @@ class SaltySession:
         ai_schema = [key for key in training_data[0].keys() if key != 'winner']
         trained_model = saltyai.LogRegression(ai_schema)
         trained_model.train(training_data, 'winner')
-        trained_model_id = self.db.add_ai_logreg_model(trained_model.to_json())['guid']
+        trained_model_id = self.db.add_ai_logreg_model(trained_model.to_json()).guid
         self.models[trained_model_id] = trained_model
 
         bet_model_row = self.db.get_best_logreg_model(min_bets=400)
         if bet_model_row is None:
             bet_model_row = self.db.get_best_logreg_model(min_bets=0)
-        if bet_model_row['guid'] == trained_model_id:
+        if bet_model_row.guid == trained_model_id:
             self.bet_model_id = trained_model_id
         else:
-            bet_model = saltyai.LogRegression.from_json(bet_model_row['betas'])
-            self.bet_model_id = bet_model_row['guid']
+            bet_model = saltyai.LogRegression.from_json(bet_model_row.betas)
+            self.bet_model_id = bet_model_row.guid
             self.models[self.bet_model_id] = bet_model
-        log.info('Using best model: %s' % list(bet_model_row))
+        log.info('Using best model: %s' % bet_model_row)
 
     def update_balances(self):
         # gets tournament balance when in tournament mode
@@ -94,11 +96,11 @@ class SaltySession:
         for guid, model in self.models.items():
             if winner == model.bet:
                 self.db.increment_model_wins(guid)
-                if guid == self.bet_model_id:
+                if self.session_id and guid == self.bet_model_id:
                     self.db.increment_session_wins(self.session_id)
             else:
                 self.db.increment_model_losses(guid)
-                if guid == self.bet_model_id:
+                if self.session_id and guid == self.bet_model_id:
                     self.db.increment_session_losses(self.session_id)
 
     def update_state(self):
@@ -116,31 +118,31 @@ class SaltySession:
     def make_bets(self):
         p1 = self.db.get_or_add_fighter(self.state['p1name'])
         p2 = self.db.get_or_add_fighter(self.state['p2name'])
-        p1_wins = len(self.db.get_wins_against(p1['guid'], p2['guid']))
-        p2_wins = len(self.db.get_wins_against(p2['guid'], p1['guid']))
-        p1_fights = len(self.db.get_fights(p1['guid']))
-        p2_fights = len(self.db.get_fights(p2['guid']))
+        p1_wins = len(self.db.get_wins_against(p1.guid, p2.guid))
+        p2_wins = len(self.db.get_wins_against(p2.guid, p1.guid))
+        p1_fights = len(self.db.get_fights(p1.guid))
+        p2_fights = len(self.db.get_fights(p2.guid))
         # TODO: think of a better solution to avoid / by 0?
-        p1_winpct = 50.0 if p1['wins'] + p1['losses'] == 0 else p1['wins'] / (p1['wins'] + p1['losses']) * 100
-        p2_winpct = 50.0 if p2['wins'] + p2['losses'] == 0 else p2['wins'] / (p2['wins'] + p2['losses']) * 100
+        p1_winpct = 50.0 if p1.wins + p1.losses == 0 else p1.wins / (p1.wins + p1.losses) * 100
+        p2_winpct = 50.0 if p2.wins + p2.losses == 0 else p2.wins / (p2.wins + p2.losses) * 100
         p_coeffs = {
-            'elo_diff': p1['elo'] - p2['elo'],
+            'elo_diff': p1.elo - p2.elo,
             'wins_diff': p1_wins - p2_wins,
             'win_pct_diff': p1_winpct - p2_winpct
         }
 
         log.info('P1({name}) elo: {elo}, wins vs p2: {wins}, win pct: {winpct}, fights: {nFights}'.format(
-            name=p1['name'],
-            elo=p1['elo'],
+            name=p1.name,
+            elo=p1.elo,
             wins=p1_wins,
-            winpct=p1_winpct * 100,
+            winpct=p1_winpct,
             nFights=p1_fights
         ))
         log.info('P2({name}) elo: {elo}, wins vs p1: {wins}, win pct: {winpct}, fights: {nFights}'.format(
-            name=p2['name'],
-            elo=p2['elo'],
+            name=p2.name,
+            elo=p2.elo,
             wins=p2_wins,
-            winpct=p2_winpct * 100,
+            winpct=p2_winpct,
             nFights=p2_fights
         ))
 
@@ -199,11 +201,11 @@ class SaltySession:
                         self.update_balances()
                         if not session_started and self.mode in ['normal', 'exhibition']:
                             try:
-                                self.session_id = self.db.start_session(self.balance)['guid']
+                                self.session_id = self.db.start_session(self.balance).guid
                                 session_started = True
                             except saltydb.OpenSessionError:
                                 self.db.end_session(self.balance)
-                                self.session_id = self.db.start_session(self.balance)['guid']
+                                self.session_id = self.db.start_session(self.balance).guid
                                 session_started = True
 
                         log.info('Wallet: %s, Tournament Balance: %s' % (self.balance, self.tournament_balance))
