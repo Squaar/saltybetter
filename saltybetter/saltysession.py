@@ -1,5 +1,5 @@
 from . import saltyclient
-from .db import saltydb_lite
+# from .db import saltydb_lite
 from .db import saltydb
 from . import saltyai
 import logging
@@ -14,23 +14,24 @@ log = logging.getLogger(__name__)
 
 
 # TODO: Try Tensorflow/Keras
-
+# TODO: implement --init_db
 
 class SaltySession:
 
     def __init__(self):
         arg_parser = argparse.ArgumentParser()
-        arg_parser.add_argument('-db', '--database', default='salt.db', help='SQLite database file to use')
+        arg_parser.add_argument('-db', '--database', default='sqlite:///salt.db', help='SQLite database file to use')
         arg_parser.add_argument('-m', '--memory', action='store_true', help='Use in-memory database instead of a database file. This takes precedence over -db if it is set.')
         arg_parser.add_argument('-r', '--refresh_interval', type=int, default=5, help='How often to poll for status & current state in seconds')
+        arg_parser.add_argument('-u', '--username', help='Saltybet login username. Currently non-functional. You must spoof login!')
+        arg_parser.add_argument('-p', '--password', help='Saltybet login password. Currently non-functional. You must spoof login!')
+        arg_parser.add_argument('-t', '--test', type=int, default=0, help='Test mode. Puts a limiter on the training data query so it doesn\'t take forever')
+        arg_parser.add_argument('-e', '--echo', action='store_true', help='Echo DB queries to std.out')
+        arg_parser.add_argument('--init_db', action='store_true', help='Test connection to the DB and initialize tables')
         arg_parser.add_argument('--max_bet', default=1000, type=int, help='The maximum amount of saltybux saltybetter will bet')
         arg_parser.add_argument('--min_bet', default=10, type=int, help='The minimum amount of saltybux saltybetter will bet')
         arg_parser.add_argument('--balance_source', default='page', choices=['page', 'ajax'],
                                 help='Where saltybetter will look for the current wallet balance. Valid values are "page" and "ajax". Currently, only "page" works.')
-        arg_parser.add_argument('-u', '--username', help='Saltybet login username. Currently non-functional. You must spoof login!')
-        arg_parser.add_argument('-p', '--password', help='Saltybet login password. Currently non-functional. You must spoof login!')
-        arg_parser.add_argument('-t', '--test', action='store_true', help='Test mode. Puts a limiter on the training data query so it doesn\'t take forever')
-        arg_parser.add_argument('-e', '--echo', action='store_true', help='Echo DB queries to std.out')
         self.args = arg_parser.parse_args()
 
         self.client = saltyclient.SaltyClient()
@@ -44,7 +45,8 @@ class SaltySession:
         self.models = {}
 
         # TODO: Train in a thread
-        training_data = self.db.get_training_data(test_mode=self.args.test, test_limit=1000)
+        training_data = self.db.get_training_data(test_mode=self.args.test, test_limit=self.args.test)
+        # TODO: should handle no training_data
         ai_schema = [key for key in training_data[0].keys() if key != 'winner']
         trained_model = saltyai.LogRegression(ai_schema)
         trained_model.train(training_data, 'winner')
@@ -175,7 +177,7 @@ class SaltySession:
     def start(self):
         # self.client.login(self.args.username, self.args.password)
         self.client.spoof_login(
-            '__cfduid=dd23d875eb54af698be6f623da2345ef91523785275; PHPSESSID=a3jv4c318aa5tpkagcj6mi3833',
+            '__cfduid=dd23d875eb54af698be6f623da2345ef91523785275; PHPSESSID=uqnrffud693pjevnihg6g1ndo7;',
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.117 Safari/537.36'
         )
 
@@ -217,6 +219,7 @@ class SaltySession:
 
     def stop(self, signum=None, frame=None):
         self.db.end_session(self.balance)
+        logger.warn('Exiting... %s' % signum)
         sys.exit()
 
 

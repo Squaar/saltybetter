@@ -5,8 +5,8 @@ from bs4 import BeautifulSoup
 
 log = logging.getLogger(__name__)
 
+# TODO: Use saltydb types here
 
-# TODO: make Fighter object
 
 class SaltyClient:
     _LOGIN_URL = 'http://saltybet.com/authenticate?signin=1'
@@ -60,10 +60,13 @@ class SaltyClient:
         page_balance = soup.find_all(id='b')[0]['value']
 
         # import pdb; pdb.set_trace()
-        return {
-            'ajax': None if not ajax_response.text else int(ajax_response.text),
-            'page': None if not page_balance else int(page_balance)
-        }
+        try:
+            return {
+                'ajax': None if not ajax_response.text else int(ajax_response.text),
+                'page': None if not page_balance else int(page_balance)
+            }
+        except ValueError as e:
+            raise AuthError('Not logged in! - %s' % repr(e))
 
     def place_bet(self, player, amount):
         amount = int(amount)
@@ -84,3 +87,8 @@ class SaltyClient:
         response = self.session.get('http://saltybet.com/state.json')
         state = json.loads(response.text)
         return state
+
+class AuthError(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message

@@ -17,6 +17,7 @@ Base = declarative_base()
 # http://docs.sqlalchemy.org/en/latest/core/type_basics.html#generic-types
 
 
+# noinspection PyPep8
 class SaltyDB:
 
     def __init__(self, conn_str, elo_stake=0.05, echo=False):
@@ -64,12 +65,12 @@ class SaltyDB:
 
     # TODO: refactor to not need this - just keep the session object and update
     def increment_session_wins(self, session_guid):
-        session = self.session.query(Session).filter(Session.guid==session_guid).first()
+        session = self.session.query(Session).filter(Session.guid == session_guid).first()
         session.wonBets += 1
         self.session.commit()
 
     def increment_model_wins(self, model_guid):
-        model = self.session.query(AILogregModel).filter(AILogregModel.guid==model_guid).first()
+        model = self.session.query(AILogregModel).filter(AILogregModel.guid == model_guid).first()
         model.wonBets += 1
         self.session.commit()
 
@@ -100,11 +101,11 @@ class SaltyDB:
     # fighter can be name or guid
 
     def get_fighter_by_guid(self, guid):
-        fighter = self.session.query(Fighter).filter(Fighter.guid==guid).first()
+        fighter = self.session.query(Fighter).filter(Fighter.guid == guid).first()
         return fighter
 
     def get_fighter_by_name(self, name):
-        fighter = self.session.query(Fighter).filter(Fighter.name==name).first()
+        fighter = self.session.query(Fighter).filter(Fighter.name == name).first()
         return fighter
 
     # def get_fights(self, p1_guid, p2_guid):
@@ -113,15 +114,15 @@ class SaltyDB:
     #     return fights
 
     def get_fights(self, guid):
-        fights = self.session.query(Fight).filter(or_(Fight.p1==guid, Fight.p2==guid)).all()
+        fights = self.session.query(Fight).filter(or_(Fight.p1 == guid, Fight.p2 == guid)).all()
         return fights
 
     # get p1's wins against p2. includes where #s reversed
     # TODO: refactor to just return the number instead of full list (get_n_wins_against)
     def get_wins_against(self, p1_guid, p2_guid):
         wins = self.session.query(Fight).filter(or_(
-            and_(Fight.p1==p1_guid, Fight.p2==p2_guid, Fight.winner==1),
-            and_(Fight.p1==p2_guid, Fight.p2==p1_guid, Fight.winner==2)
+            and_(Fight.p1 == p1_guid, Fight.p2 == p2_guid, Fight.winner == 1),
+            and_(Fight.p1 == p2_guid, Fight.p2 == p1_guid, Fight.winner == 2)
         )).all()
         return wins
 
@@ -170,42 +171,35 @@ class SaltyDB:
             log.warning('More than one session closed: %s' % [session.guid for session in open_sessions])
 
         last_session_guid = self.session.query(func.max(Session.guid)).subquery()
-        last_session = self.session.query(Session).filter(Session.guid==last_session_guid).first()
+        last_session = self.session.query(Session).filter(Session.guid == last_session_guid).first()
         return last_session
 
-
+    # TODO: this is causing oom errors in the kernel :(
+    # only need p1elo, p2elo, p1winsvp2, p2winsvp1, p1winpct, p2winpct, winner
     def get_training_data(self, test_mode=False, test_limit=100):
         log.info('Generating training data, this may take a while...')
         f = aliased(Fight, name='f')
         p1 = aliased(Fighter, name='p1')
         p2 = aliased(Fighter, name='p2')
         p1winsvp2 = self.session.query(func.count(1)).filter(or_(
-            and_(Fight.p1==f.p1, Fight.p2==f.p2, Fight.winner==1),
-            and_(Fight.p1==f.p2, Fight.p2==f.p1, Fight.winner==2)
+            and_(Fight.p1 == f.p1, Fight.p2 == f.p2, Fight.winner == 1),
+            and_(Fight.p1 == f.p2, Fight.p2 == f.p1, Fight.winner == 2)
         )).label('p1winsvp2')
         p2winsvp1 = self.session.query(func.count(1)).filter(or_(
             and_(Fight.p1 == f.p1, Fight.p2 == f.p2, Fight.winner == 2),
             and_(Fight.p1 == f.p2, Fight.p2 == f.p1, Fight.winner == 1)
         )).label('p2winsvp1')
 
-        fights = self.session.query(f, p1, p2, p1winsvp2, p2winsvp1)
+        fights = self.session.query(f.winner, p1.elo, p2.elo, p1winsvp2, p2winsvp1, p1.winpct, p2.winpct)
         fights = fights.join(p1, f.p1==p1.guid).join(p2, f.p2==p2.guid)
         if test_mode:
             fights = fights.limit(test_limit)
         return [{
-            'elo_diff': p1.elo - p2.elo,
+            'elo_diff': p1elo - p2elo,
             'wins_diff': p1winsvp2 - p2winsvp1,
-            'win_pct_diff': p1.winpct - p2.winpct,
-            'winner': fight.winner - 1  # -1 to put in range [0,1]
-        } for fight, p1, p2, p1winsvp2, p2winsvp1 in fights.all()]
-
-        # for fight, p1, p2, p1winsvp2, p2winsvp1 in fights.all():
-        #     yield {
-        #         'elo_diff': p1.elo - p2.elo,
-        #         'wins_diff': p1winsvp2 - p2winsvp1,
-        #         'win_pct_diff': p1.winpct - p2.winpct,
-        #         'winner': fight.winner - 1  # -1 to put in range [0,1]
-        #     }
+            'win_pct_diff': p1winpct - p2winpct,
+            'winner': winner - 1  # -1 to put in range [0,1]
+        } for winner, p1elo, p2elo, p1winsvp2, p2winsvp1, p1winpct, p2winpct in fights.all()]
 
 
 class Fighter(Base):
@@ -227,13 +221,14 @@ class Fighter(Base):
     def winpct(self):
         if self.wins + self.losses == 0:
             return 50.0
+        # noinspection PyTypeChecker
         return float(self.wins) / (self.wins + self.losses) * 100
 
     @winpct.expression
-    def winpct(cls):
+    def winpct(self):
         return case(
-            [(cls.wins + cls.losses == 0, 50.0)],
-            else_ = cast(cls.wins, Float) / (cls.wins + cls.losses) * 100
+            [(self.wins + self.losses == 0, 50.0)],
+            else_ =cast(self.wins, Float) / (self.wins + self.losses) * 100
         )
 
 
@@ -316,14 +311,15 @@ class AILogregModel(Base):
     def wonBetsPct(self):
         if self.wonBets + self.lostBets == 0:
             return 0.0
+        # noinspection PyTypeChecker
         return float(self.wonBets) / (self.wonBets + self.lostBets) * 100.0
 
     # TODO: this doesn't work
     @wonBetsPct.expression
-    def wonBetsPct(cls):
+    def wonBetsPct(self):
         return case(
-            [(cls.wonBets + cls.lostBets == 0, 0.0)],
-            else_ = cast(cls.wonBets, Float) / (cls.wonBets + cls.lostBets) * 100.0
+            [(self.wonBets + self.lostBets == 0, 0.0)],
+            else_ =cast(self.wonBets, Float) / (self.wonBets + self.lostBets) * 100.0
         )
 
 

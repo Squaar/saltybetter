@@ -7,15 +7,13 @@ log.warning('SaltyDBLite will be obsolete soon in favor of SaltyDB')
 
 MEMORY = ':memory:'
 
-# TODO: move to a better DBMS, can't multithread sqlite
 
-class SaltyDBLite(SaltyDB):
+class SaltyDBLite:
 
     def __init__(self, db=MEMORY, elo_stake=.05):
         self.elo_stake = elo_stake
         self.conn = sqlite3.connect(db)
         self.conn.row_factory = sqlite3.Row
-        # TODO: add table to keep betas between sesisons
         self.conn.executescript('''
             CREATE TABLE IF NOT EXISTS fighters(
                 guid INTEGER PRIMARY KEY,
