@@ -1,5 +1,4 @@
 from . import saltyclient
-# from .db import saltydb_lite
 from .db import saltydb
 from . import saltyai
 import logging
@@ -35,7 +34,6 @@ class SaltySession:
         self.args = arg_parser.parse_args()
 
         self.client = saltyclient.SaltyClient()
-        # self.db = saltydb_lite.SaltyDBLite(saltydb_lite.MEMORY if self.args.memory else self.args.database)
         self.db = saltydb.SaltyDB(self.args.database, echo=self.args.echo)
         self.state = None
         self.mode = None
@@ -219,7 +217,7 @@ class SaltySession:
 
     def stop(self, signum=None, frame=None):
         self.db.end_session(self.balance)
-        logger.warn('Exiting... %s' % signum)
+        log.warning('Exiting... %s' % signum)
         sys.exit()
 
 

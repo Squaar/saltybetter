@@ -36,8 +36,8 @@ class SaltyDB:
 
     def get_best_logreg_model(self, min_bets=0):
         q = self.session.query(AILogregModel)
-        q = q.filter(AILogregModel.wonBets + AILogregModel.lostBets >= min_bets)
-        q = q.order_by(desc(AILogregModel.wonBetsPct))
+        q = q.filter(AILogregModel.won_bets + AILogregModel.lost_bets >= min_bets)
+        q = q.order_by(desc(AILogregModel.won_bets_pct))
         return q.first()
 
     def add_fight(self, p1name, p2name, winner, mode):
@@ -66,22 +66,22 @@ class SaltyDB:
     # TODO: refactor to not need this - just keep the session object and update
     def increment_session_wins(self, session_guid):
         session = self.session.query(Session).filter(Session.guid == session_guid).first()
-        session.wonBets += 1
+        session.won_bets += 1
         self.session.commit()
 
     def increment_model_wins(self, model_guid):
         model = self.session.query(AILogregModel).filter(AILogregModel.guid == model_guid).first()
-        model.wonBets += 1
+        model.won_bets += 1
         self.session.commit()
 
     def increment_session_losses(self, session_guid):
         session = self.session.query(Session).filter(Session.guid == session_guid).first()
-        session.lostBets += 1
+        session.lost_bets += 1
         self.session.commit()
 
     def increment_model_losses(self, model_guid):
         model = self.session.query(AILogregModel).filter(AILogregModel.guid == model_guid).first()
-        model.lostBets += 1
+        model.lost_bets += 1
         self.session.commit()
 
     # returns newly created fighter
@@ -143,11 +143,11 @@ class SaltyDB:
     def start_session(self, balance):
         if balance is None:
             raise TypeError('Balance cannot be None')
-        open_sessions = self.session.query(Session).filter(Session.endTS == None).all()
+        open_sessions = self.session.query(Session).filter(Session.end_ts == None).all()
         if len(open_sessions) > 0:
             raise OpenSessionError('A session is already open!', len(open_sessions))
 
-        new_session = Session(startBalance=balance)
+        new_session = Session(start_balance=balance)
         self.session.add(new_session)
         self.session.commit()
         log.info('Session started: %s' % new_session)
@@ -158,12 +158,12 @@ class SaltyDB:
         if balance is None:
             raise TypeError('Balance cannot be None')
 
-        open_sessions = self.session.query(Session).filter(Session.endTS == None).all()
+        open_sessions = self.session.query(Session).filter(Session.end_ts == None).all()
         last_fight = self.session.query(func.max(Fight.time)).first()
         last_fight = last_fight[0] if last_fight else datetime.datetime.utcnow()
         for session in open_sessions:
-            session.endTS = last_fight
-            session.endBalance = balance
+            session.end_ts = last_fight
+            session.end_balance = balance
         self.session.commit()
         if len(open_sessions) == 0:
             log.info('No sessions to close')
@@ -256,18 +256,18 @@ class Session(Base):
     __tablename__ = 'sessions'
 
     guid =          Column(Integer, primary_key=True)
-    startTS =       Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
-    endTS =         Column(DateTime)
-    startBalance =  Column(Integer, nullable=False)
-    endBalance =    Column(Integer)
-    wonBets =       Column(Integer, nullable=False, default=0)  # TODO: can we get rid of won/lost count once bets table is implemented?
-    lostBets =      Column(Integer, nullable=False, default=0)
+    start_ts =       Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    end_ts =         Column(DateTime)
+    start_balance =  Column(Integer, nullable=False)
+    end_balance =    Column(Integer)
+    won_bets =       Column(Integer, nullable=False, default=0)  # TODO: can we get rid of won/lost count once bets table is implemented?
+    lost_bets =      Column(Integer, nullable=False, default=0)
 
     def __repr__(self):
         return '<Session ({guid}): {start} - {end}>'.format(
             guid =  self.guid,
-            start = self.startTS,
-            end =   self.endTS
+            start = self.start_ts,
+            end =   self.end_ts
         )
 
 
@@ -281,7 +281,7 @@ class Bet(Base):
     # on =            Column(Integer, ForeignKey('fighters.guid'), nullable=False)  # TODO: add on column
     amount =        Column(Integer, nullable=False)
     won =           Column(Boolean)
-    preBalance =    Column(Integer, nullable=False)
+    pre_balance =    Column(Integer, nullable=False)
     profit =        Column(Integer)
 
     def __repr__(self):
@@ -297,29 +297,29 @@ class AILogregModel(Base):
 
     guid =      Column(Integer, primary_key=True)
     betas =     Column(String, nullable=False)
-    wonBets =   Column(Integer, nullable=False, default=0)  # TODO: can we get rid of won/lost count once bets table is implemented?
-    lostBets =  Column(Integer, nullable=False, default=0)
+    won_bets =   Column(Integer, nullable=False, default=0)  # TODO: can we get rid of won/lost count once bets table is implemented?
+    lost_bets =  Column(Integer, nullable=False, default=0)
 
     def __repr__(self):
         return '<AILogregModel ({guid}): {nfights} - {winpct}%>'.format(
             guid =      self.guid,
-            nfights =   self.wonBets + self.lostBets,
-            winpct =    None if self.wonBets + self.lostBets == 0 else self.wonBets / (self.wonBets + self.lostBets) * 100
+            nfights =   self.won_bets + self.lost_bets,
+            winpct =    None if self.won_bets + self.lost_bets == 0 else self.won_bets / (self.won_bets + self.lost_bets) * 100
         )
 
     @hybrid_property
-    def wonBetsPct(self):
-        if self.wonBets + self.lostBets == 0:
+    def won_bets_pct(self):
+        if self.won_bets + self.lost_bets == 0:
             return 0.0
         # noinspection PyTypeChecker
-        return float(self.wonBets) / (self.wonBets + self.lostBets) * 100.0
+        return float(self.won_bets) / (self.won_bets + self.lost_bets) * 100.0
 
     # TODO: this doesn't work
-    @wonBetsPct.expression
-    def wonBetsPct(self):
+    @won_bets_pct.expression
+    def won_bets_pct(self):
         return case(
-            [(self.wonBets + self.lostBets == 0, 0.0)],
-            else_ =cast(self.wonBets, Float) / (self.wonBets + self.lostBets) * 100.0
+            [(self.won_bets + self.lost_bets == 0, 0.0)],
+            else_ =cast(self.won_bets, Float) / (self.won_bets + self.lost_bets) * 100.0
         )
 
 
