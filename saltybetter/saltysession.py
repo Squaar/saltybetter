@@ -1,11 +1,12 @@
 from . import saltyclient
 from .db import saltydb
 from . import saltyai
+from socketIO_client import SocketIO, LoggingNamespace
 import logging
-import time
 import signal
 import sys
 import argparse
+
 
 # logging.basicConfig(filename='salty.log', format='%(asctime)s-%(name)s-%(levelname)s: %(message)s', level=logging.INFO)
 logging.basicConfig(format='%(asctime)s-%(name)s-%(levelname)s: %(message)s', level=logging.INFO)
@@ -21,7 +22,6 @@ class SaltySession:
         arg_parser = argparse.ArgumentParser()
         arg_parser.add_argument('-db', '--database', default='sqlite:///salt.db', help='SQLite database file to use')
         arg_parser.add_argument('-m', '--memory', action='store_true', help='Use in-memory database instead of a database file. This takes precedence over -db if it is set.')
-        arg_parser.add_argument('-r', '--refresh_interval', type=int, default=5, help='How often to poll for status & current state in seconds')
         arg_parser.add_argument('-u', '--username', help='Saltybet login username. Currently non-functional. You must spoof login!')
         arg_parser.add_argument('-p', '--password', help='Saltybet login password. Currently non-functional. You must spoof login!')
         arg_parser.add_argument('-t', '--test', type=int, default=0, help='Test mode. Puts a limiter on the training data query so it doesn\'t take forever')
@@ -35,6 +35,8 @@ class SaltySession:
 
         self.client = saltyclient.SaltyClient()
         self.db = saltydb.SaltyDB(self.args.database, echo=self.args.echo)
+        self.socket = SocketIO('www-cdn-twitch.saltybet.com', 1337, LoggingNamespace)
+        self.socket.on('message', self._on_message)
         self.state = None
         self.mode = None
         self.balance = None
@@ -179,41 +181,39 @@ class SaltySession:
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.117 Safari/537.36'
         )
 
-        session_started = False
         signal.signal(signal.SIGINT, self.stop)
         signal.signal(signal.SIGTERM, self.stop)
 
-        while True:
-            try:
-                old_state = self.state
-                self.update_state()
-                if old_state != self.state:
-                    log.info('State: %s' % self.state)
+        self.socket.wait()
 
-                    # fight over, have winner
-                    if self.state['status'] in ['1', '2']:
-                        log.info('Player %s wins!' % self.state['status'])
-                        self.db.add_fight(self.state['p1name'], self.state['p2name'], int(self.state['status']), self.mode)
-                        self.update_bet_stats()
-                        # TODO: retrain with new fight results?
+    def _on_message(self, *args):
+        try:
+            old_state = self.state
+            self.update_state()
+            if old_state != self.state:
+                log.info('State: %s' % self.state)
 
-                    elif self.state['status'] == 'open':
-                        self.update_balances()
-                        if not session_started and self.mode in ['normal', 'exhibition']:
-                            try:
-                                self.session_id = self.db.start_session(self.balance).guid
-                                session_started = True
-                            except saltydb.OpenSessionError:
-                                self.db.end_session(self.balance)
-                                self.session_id = self.db.start_session(self.balance).guid
-                                session_started = True
+                # fight over, have winner
+                if self.state['status'] in ['1', '2']:
+                    log.info('Player %s wins!' % self.state['status'])
+                    self.db.add_fight(self.state['p1name'], self.state['p2name'], int(self.state['status']), self.mode)
+                    self.update_bet_stats()
+                    # TODO: retrain with new fight results?
 
-                        log.info('Wallet: %s, Tournament Balance: %s' % (self.balance, self.tournament_balance))
-                        self.make_bets()
+                elif self.state['status'] == 'open':
+                    self.update_balances()
+                    if self.session_id is None and self.mode in ['normal', 'exhibition']:
+                        try:
+                            self.session_id = self.db.start_session(self.balance).guid
+                        except saltydb.OpenSessionError:
+                            self.db.end_session(self.balance)
+                            self.session_id = self.db.start_session(self.balance).guid
 
-            except Exception as e:
-                log.exception('UH OH! %s' % e)
-            time.sleep(self.args.refresh_interval)
+                    log.info('Wallet: %s, Tournament Balance: %s' % (self.balance, self.tournament_balance))
+                    self.make_bets()
+
+        except Exception as e:
+            log.exception('UH OH! %s' % e)
 
     def stop(self, signum=None, frame=None):
         self.db.end_session(self.balance)

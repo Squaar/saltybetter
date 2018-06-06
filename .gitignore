@@ -1,5 +1,7 @@
 backup.bat
 salt.db
+scripts/
+backup/
 
 # pycharm
 .idea
