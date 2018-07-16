@@ -150,26 +150,25 @@ class SaltySession:
 
         for guid, model in self.models.items():
             prediction = model.p(p_coeffs)
+
             if prediction > 0.5:
                 model.bet = 2
-            elif prediction < 0.5:
+            elif prediction <= 0.5:
                 model.bet = 1
-            else:
-                model.bet = 1
-                log.info('Prediction is a tie!')
 
             if guid == self.bet_model_id:
+                bet_amount = ((abs(float(prediction) - 0.5) / 0.5) * (self.args.max_bet - self.args.min_bet)) + self.args.min_bet
                 log.info('Bet Prediction(%s): Player %s (%s)' % (guid, model.bet, prediction))
-                # TODO: find a smarter way to decide amount to bet
-                amount = 10
 
                 # sanity checks
-                if amount < self.args.min_bet:
-                    amount = self.args.min_bet
-                elif amount > self.args.max_bet:
-                    amount = self.args.max_bet
+                if bet_amount < self.args.min_bet:
+                    log.warning('bet_amount (%s) less than min_bet! Forced min_bet (%s).' % (bet_amount, self.args.min_bet))
+                    bet_amount = self.args.min_bet
+                elif bet_amount > self.args.max_bet:
+                    log.warning('bet_amount (%s) greater than max_bet! Forced max_bet (%s).' % (bet_amount, self.args.max_bet))
+                    bet_amount = self.args.max_bet
 
-                self.client.place_bet(model.bet, amount)
+                self.client.place_bet(model.bet, bet_amount)
             else:
                 log.info('Prediction(%s): Player %s (%s)' % (guid, model.bet, prediction))
 
