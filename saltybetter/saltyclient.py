@@ -51,6 +51,7 @@ class SaltyClient:
         self.session = requests.Session()
         self.session.headers.update(self._HEADERS)
 
+    # TODO: Ajax doesn't work for some reason
     def get_wallet_balance(self):
         ajax_response = self.session.get('http://saltybet.com/ajax_tournament_end.php')
         page_response = self.session.get('http://saltybet.com')

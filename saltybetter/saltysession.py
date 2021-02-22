@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 # TODO: Try Tensorflow/Keras
 # TODO: add % based min/max bets
+# TODO: implement --init_db as below
 
 class SaltySession:
 
@@ -38,7 +39,8 @@ class SaltySession:
         self.t_locals = threading.local()
         self.t_locals.client = saltyclient.SaltyClient()
         self.t_locals.db = saltydb.SaltyDB(self.args.database, echo=self.args.echo)
-        self.socket = SocketIO('www-cdn-twitch.saltybet.com', 1337, LoggingNamespace)
+        # self.socket = SocketIO('www-cdn-twitch.saltybet.com', 1337, LoggingNamespace)
+        self.socket = SocketIO('https://www.saltybet.com', 2096, LoggingNamespace)
         self.socket.on('message', self._on_message)
         self.state = None
         self.mode = None
@@ -56,8 +58,8 @@ class SaltySession:
     def start(self):
         # self.t_locals.client.login(self.args.username, self.args.password)
         self.t_locals.client.spoof_login(
-            '__cfduid=dd23d875eb54af698be6f623da2345ef91523785275; PHPSESSID=uqnrffud693pjevnihg6g1ndo7;',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.117 Safari/537.36'
+            '__cfduid=d953b3e8f82e16d65747e123665eb6d251613970875; PHPSESSID=o6fkdr4iem32k704v9jsdh3ks6;',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36'
         )
 
         signal.signal(signal.SIGINT, self.stop)
@@ -117,6 +119,7 @@ class SaltySession:
 
     def _on_message(self, *args):
         try:
+            log.info('message received')
             old_state = self.state
             self.update_state()
             if old_state != self.state:
